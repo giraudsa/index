@@ -141,8 +141,7 @@ public abstract class AbstractIndex<U , K, V> {
 		this.objectType = store.getObjectType();
 		this.isPrimary = this instanceof PrimaryIndexFile;
 		positionComputeKey = KEY_TYPE_POSITION + Short.SIZE / 8 + keyType.getName().length();
-		this.positionEndOfHeaderInAbstractIndex = isPrimary ? positionComputeKey : positionComputeKey + Short.SIZE / 8 + delegateKey.toString().getBytes().length;
-		initFile();
+		this.positionEndOfHeaderInAbstractIndex = initFile();
 	}
 	
 	protected abstract void rebuild(long version) throws IOException, StorageException, SerializationException;
@@ -159,10 +158,9 @@ public abstract class AbstractIndex<U , K, V> {
 		setRootPosition(NULL);
 		write(IS_PRIMARY_POSITION, isPrimary);
 		write(KEY_TYPE_POSITION, keyType.getName());
-		if(!isPrimary) {
-			seek(positionComputeKey);
+		if(!isPrimary)
 			ComputeKey.marshall(delegateKey, raf, store.getMarshaller());
-		}
+		return raf.getFilePointer();
 	}
 	
 	protected CacheModifications deleteObjects(Collection<U> us, long v) throws IOException, StorageException, SerializationException {
