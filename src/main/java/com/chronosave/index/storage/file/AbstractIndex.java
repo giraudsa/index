@@ -154,7 +154,7 @@ public abstract class AbstractIndex<U , K, V> {
 		cache.clear();
 		initFile();
 	}
-	protected void initFile() throws IOException, StorageException, SerializationException {
+	protected long initFile() throws IOException, StorageException, SerializationException {
 		setRootPosition(NULL);
 		write(IS_PRIMARY_POSITION, isPrimary);
 		write(KEY_TYPE_POSITION, keyType.getName());

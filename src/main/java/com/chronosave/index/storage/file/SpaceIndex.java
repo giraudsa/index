@@ -171,10 +171,11 @@ public class SpaceIndex<U, K extends List<Double>>  extends AbstractIndex<U, K, 
 		setVersion(version);
 	}
 	
-	@Override
-	protected void initFile() throws IOException, StorageException, SerializationException {
-		super.initFile();
+	
+	protected long initFile() throws IOException, StorageException, SerializationException {
+		long positionEndOfHeaderInAbstractIndex = super.initFile();
 		setReverseRootPosition(NULL);
+		return positionEndOfHeaderInAbstractIndex;
 	}
 
 	@Override

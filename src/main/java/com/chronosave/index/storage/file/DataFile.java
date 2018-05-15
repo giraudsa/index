@@ -57,7 +57,7 @@ public class DataFile<U>{
 	}
 
 	public U getObject(long beginingOfSerializedObject) throws IOException, SerializationException{
-		ra.seek(beginingOfSerializedObject + 16); //We jump the version
+		ra.skipBytes(Long.BYTES); //We jump the version
 		boolean suppr = ra.readBoolean();
 		if(suppr) return null;
 		return marshaller.unserialize(getObjectType(), ra);//the id is read in the description
@@ -127,8 +127,8 @@ protected class ParcoursObjectsMaxVersion implements Iterator<U>{
 		private void cacheNext() throws IOException, StorageException, SerializationException {
 			next = null;
 			while(next == null && position >= 0) {
-				if(position > 16) {
-					raf.seek(position - 16); //16 bytes in hexa to write a positive long in string
+				if(position > Long.BYTES) {
+					raf.seek(position - Long.BYTES);
 					position = raf.readLong();
 				}else {
 					raf.seek(position);
@@ -154,7 +154,7 @@ protected class ParcoursObjectsMaxVersion implements Iterator<U>{
 			try {
 				deleteFileWhenFinish();
 			} catch (IOException e) {
-				throw new StorageRuntimeException("impossible de virer le vieux fichier", e);
+				throw new StorageRuntimeException("impossible to delete the old file", e);
 			}
 			return next == null;
 		}

@@ -50,9 +50,10 @@ public abstract class IndexBiDirectionalId<U, K extends Comparable<K>>  extends 
 	}
 	
 	@Override
-	protected void initFile() throws IOException, StorageException, SerializationException {
-		super.initFile();
+	protected long initFile() throws IOException, StorageException, SerializationException {
+		long positionEndOfHeaderInAbstractIndex = super.initFile();
 		setReverseRootPosition(NULL);
+		return positionEndOfHeaderInAbstractIndex;
 	}
 	
 	@Override
