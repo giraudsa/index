@@ -43,13 +43,13 @@ public class SingletonNode<K extends Comparable<K>> extends SimpleNode<K,K>{
 	 * @throws StorageException
 	 * @throws SerializationException 
 	 */
-	public SingletonNode(long keyPosition, AbstractIndex<?, ?, ?> index, CacheModifications modifs, Class<K> keyType) throws StorageException, SerializationException {
-		super(keyPosition, null, index, modifs, keyType, keyType);
+	public SingletonNode(long keyPosition, AbstractIndex<?, ?, ?> index, Class<K> keyType, CacheModifications modifs) throws StorageException, SerializationException {
+		super(keyPosition, null, index, keyType, keyType, modifs);
 	}
 	
 	@Override
 	protected Node1D<K, K> newNode(long keyPosition, Long valuePosition, AbstractIndex<?, ?, ?> index, CacheModifications modifs) throws IOException, StorageException, SerializationException {
-		return new SingletonNode<>(keyPosition, index, modifs, keyType);
+		return new SingletonNode<>(keyPosition, index, keyType, modifs);
 	}
 	@Override
 	protected void setValuePosition(long dummy1, CacheModifications dummy2) {/* no value ! */}

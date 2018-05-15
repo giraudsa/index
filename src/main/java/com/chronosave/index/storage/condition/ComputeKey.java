@@ -3,6 +3,7 @@ package com.chronosave.index.storage.condition;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
+import java.util.Collection;
 
 import com.chronosave.index.externe.SerializationStore;
 import com.chronosave.index.storage.exception.StorageException;
@@ -23,4 +24,5 @@ public interface ComputeKey<K, U> {
 	public Class<K> getKeyType();
 	public Class<U> getObjectType();
 	public K getKey(U object) throws StorageException;
+	public Collection<K> getKeys(U objectToAdd) throws StorageException;
 }

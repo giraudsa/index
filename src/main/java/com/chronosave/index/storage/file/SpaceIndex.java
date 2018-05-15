@@ -74,32 +74,38 @@ public class SpaceIndex<U, K extends List<Double>>  extends AbstractIndex<U, K, 
 		checkVersion(store.getVersion());
 	}
 	
-	@Override
-	protected void add(U object, long version, final CacheModifications modifs) throws StorageException, IOException, SerializationException {
-		add(getKey(object), computeValue(object, version), modifs);
-	}
-	
-	private void add(K key, String id, CacheModifications modifs) throws StorageException, IOException, SerializationException {
+	protected void add(K key, String id, CacheModifications modifs) throws StorageException, IOException, SerializationException {
+		if(key == null) return;
 		AbstractNode<String, K> oldReverseNode = getReverseRoot(modifs).findNode(id, modifs);
-		long idPosition = NULL;
 		if(oldReverseNode != null) {
-			idPosition = oldReverseNode.keyPosition(modifs);
 			K oldKey = oldReverseNode.getValue(modifs);
 			if(isEqual(oldKey,key)) return;//nothing to do
 			XYNode<K> oldComplexNode = (XYNode<K>) getRoot(modifs).findNode(oldKey, modifs);//getRacine() is not null
 			oldComplexNode.deleteId(id, modifs);
 		}
-		if(key == null) return;
-		idPosition = idPosition == NULL ? writeFakeAndCache(id, modifs) : idPosition;
-		long keyPosition = writeFakeAndCache(key, modifs);
-		if(getRoot(modifs) == null)
-			initRootWithCoordinates(key, modifs);
-		setRoot((XYNode<K>)getRoot(modifs).addAndBalance(key, keyPosition, NULL, modifs), modifs);
-		XYNode<K> n = (XYNode<K>) getRoot(modifs).findNode(key, modifs);
-		n.insertValue(id, idPosition, modifs);
-		setReverseRoot((ReverseSimpleNode<K, String>) getReverseRoot(modifs).addAndBalance(id, idPosition, keyPosition, modifs), modifs);
+		if(getRoot(modifs) == null) initRootWithCoordinates(key, modifs);
+		add(key, writeFakeAndCache(key, modifs), id, getIdPosition(id, modifs), modifs);
 	}
 	
+	private void add(K key, long keyPosition, String id, long idPosition, CacheModifications modifs) throws IOException, StorageException, SerializationException {
+		addKeyToValue(key, keyPosition, id, idPosition, modifs);
+		addValueToKey(key, keyPosition, id, idPosition, modifs);
+	}
+	protected long getIdPosition(String id, CacheModifications modifs) throws IOException, StorageException, SerializationException {
+		AbstractNode<String, ?> reverseNode = getReverseRoot(modifs).findNode(id, modifs);
+		return reverseNode == null ? writeFakeAndCache(id, modifs) : reverseNode.valuePosition(modifs);
+	}
+		
+	@Override
+	protected void addKeyToValue(K key, long keyPosition, String id, long idPosition, CacheModifications modifs) throws IOException, StorageException, SerializationException {
+		setRoot((XYNode<K>) getRoot(modifs).addAndBalance(key, keyPosition, NULL, modifs), modifs);
+		XYNode<K> n = (XYNode<K>) getRoot(modifs).findNode(key, modifs);
+		n.insertValue(id, idPosition, modifs);
+	}
+	
+	private void addValueToKey(K key, long keyPosition, String id, long idPosition, CacheModifications modifs) throws IOException, StorageException, SerializationException {
+		setReverseRoot((ReverseSimpleNode<K, String>) getReverseRoot(modifs).addAndBalance(id, idPosition, keyPosition, modifs), modifs);
+	}
 	/**
 	 * We are the first. Need to decide the scale.
 	 * si x0=0, la largeur de la bbox est de 1 sinon la largeur = [0, 2*x]
@@ -165,7 +171,7 @@ public class SpaceIndex<U, K extends List<Double>>  extends AbstractIndex<U, K, 
 		for(String id : store.getPrimaryIndex()) {
 			CacheModifications modifs = new CacheModifications(this, version);
 			U obj = store.getObjectById(id);
-			add(obj, store.getVersion(), modifs);
+			add(obj, version, modifs);
 			modifs.writeWithoutChangingVersion();
 		}
 		setVersion(version);
@@ -179,13 +185,24 @@ public class SpaceIndex<U, K extends List<Double>>  extends AbstractIndex<U, K, 
 	}
 
 	@Override
-	protected void delete(String id, long version, CacheModifications modifs) throws IOException, StorageException, SerializationException {
+	protected void delete(String id, CacheModifications modifs) throws IOException, StorageException, SerializationException {
+		if(id == null) return;
 		AbstractNode<String, K> reverseNode = getReverseRoot(modifs).findNode(id, modifs);
-		if(reverseNode == null)
-			return;//nothing to do
-		setReverseRoot((ReverseSimpleNode<K, String>) getReverseRoot(modifs).deleteAndBalance(id, modifs), modifs);
+		if(reverseNode == null) return;//nothing to do
 		K oldKey = reverseNode.getValue(modifs);
-		XYNode<K> nodeXY = (XYNode<K>) getRoot(modifs).findNode(oldKey, modifs);//not null since reverseNode != null
+		delete(oldKey, id, modifs);
+		deleteKtoId(oldKey, id, modifs);
+	}
+	private void delete(K key, String id, CacheModifications modifs) throws IOException, StorageException, SerializationException {
+		deleteKtoId(key, id, modifs);
+		deleteIdtoK(id, key, modifs);
+	}
+	private void deleteIdtoK(String id, K key, CacheModifications modifs) throws IOException, StorageException, SerializationException {
+		setReverseRoot((ReverseSimpleNode<K, String>) getReverseRoot(modifs).deleteAndBalance(id, modifs), modifs);
+	}
+	@Override
+	protected void deleteKtoId(K key, String id, CacheModifications modifs) throws IOException, StorageException, SerializationException {
+		XYNode<K> nodeXY = (XYNode<K>) getRoot(modifs).findNode(key, modifs);//not null since reverseNode != null
 		nodeXY.deleteId(id, modifs);
 	}
 
@@ -199,7 +216,7 @@ public class SpaceIndex<U, K extends List<Double>>  extends AbstractIndex<U, K, 
 	
 	private class NodeIterator implements CloseableIterator<String>{
 
-		private final Iterator<NodeId> nodeXYIterator;
+		private final Iterator<SingletonNode<String>> nodeXYIterator;
 		private final ReadWriteLock locker;
 		private Iterator<String> nodeIdIterator;
 		private String next;
@@ -251,5 +268,13 @@ public class SpaceIndex<U, K extends List<Double>>  extends AbstractIndex<U, K, 
 		public void remove() {
 			throw new UnsupportedOperationException();
 		}
+	}
+
+	@Override
+	protected long getKeyPosition(K key, CacheModifications modifs) throws IOException, StorageException, SerializationException {
+		if(key == null) return NULL;
+		AbstractNode<K, SingletonNode<String>> node = getRoot(modifs);
+		node = node == null ? null : node.findNode(key, modifs);
+		return node == null ? writeFakeAndCache(key, modifs) : node.valuePosition(modifs);
 	}
 }

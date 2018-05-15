@@ -5,7 +5,7 @@ import java.io.IOException;
 import com.chronosave.index.storage.exception.StorageException;
 import com.chronosave.index.storage.exception.SerializationException;
 
-public class ComplexNode<K extends Comparable<K>> extends Node1D<K, NodeId> {
+public class ComplexNode<K extends Comparable<K>, V  extends Comparable<V>> extends Node1D<K, SingletonNode<V>> {
 
 	/**
 	 * fake noeud
@@ -14,12 +14,12 @@ public class ComplexNode<K extends Comparable<K>> extends Node1D<K, NodeId> {
 	 * @param index
 	 * @param modifs 
 	 */
-	public ComplexNode(Class<K> keyType, Class<?> dummy, AbstractIndex<?, ?, ?> index, CacheModifications modifs) {
-		super(keyType, NodeId.class, index, modifs);
+	public ComplexNode(Class<K> keyType, Class<SingletonNode<V>> singletonNodeType, AbstractIndex<?, ?, ?> index, CacheModifications modifs) {
+		super(keyType, singletonNodeType, index, modifs);
 	}
 
 	/**
-	 * lecture fichier
+	 * from file
 	 * @param position
 	 * @param abstractIndex
 	 * @param keyType
@@ -29,12 +29,12 @@ public class ComplexNode<K extends Comparable<K>> extends Node1D<K, NodeId> {
 	 * @throws StorageException 
 	 * @throws SerializationException 
 	 */
-	public ComplexNode(long position, AbstractIndex<?, ?, ?> abstractIndex, Class<K> keyType, Class<?> dummy) {
-		super(position, abstractIndex, keyType, NodeId.class);
+	public ComplexNode(long position, AbstractIndex<?, ?, ?> index, Class<K> keyType, Class<SingletonNode<V>> singletonNodeType) {
+		super(position, index, keyType, singletonNodeType);
 	}
 
 	/**
-	 * au runtime
+	 * runtime
 	 * @param keyPosition
 	 * @param valuePosition
 	 * @param index
@@ -44,13 +44,13 @@ public class ComplexNode<K extends Comparable<K>> extends Node1D<K, NodeId> {
 	 * @throws SerializationException 
 	 * @throws StorageException
 	 */
-	public ComplexNode(long keyPosition, Long valuePosition, AbstractIndex<?, ?, ?> index, CacheModifications modifs, Class<K> keyType) throws SerializationException {
-		super(keyPosition, valuePosition, index, modifs, keyType, NodeId.class);
+	public ComplexNode(long keyPosition, Long valuePosition, AbstractIndex<?, ?, ?> index, Class<K> keyType, Class<SingletonNode<V>> singletonNodeType, CacheModifications modifs) throws SerializationException {
+		super(keyPosition, valuePosition, index, keyType, singletonNodeType, modifs);
 	}
 
 	@Override
-	protected Node1D<K, NodeId> newNode(long keyPosition, Long valyePosition, AbstractIndex<?, ?, ?> index, CacheModifications modifs) throws IOException, StorageException, SerializationException {
-		return new ComplexNode<>(keyPosition, valyePosition, index, modifs, keyType);
+	protected Node1D<K, SingletonNode<V>> newNode(long keyPosition, Long valuePosition, AbstractIndex<?, ?, ?> index, CacheModifications modifs) throws IOException, StorageException, SerializationException {
+		return new ComplexNode<>(keyPosition, valuePosition, index, keyType, valueType, modifs);
 	}
 
 	@Override
@@ -67,19 +67,20 @@ public class ComplexNode<K extends Comparable<K>> extends Node1D<K, NodeId> {
 	 * @throws StorageException
 	 * @throws SerializationException  
 	 */
-	protected boolean supprimerId(String id, CacheModifications modifs) throws IOException, StorageException, SerializationException {
+	protected boolean removeValue(V value, CacheModifications modifs) throws IOException, StorageException, SerializationException {
 		if(getValue(modifs) == null) return true;
 		boolean isEmpty = false;
-		AbstractNode<String, String> newNode =  getValue(modifs).deleteAndBalance(id, modifs);
+		AbstractNode<V, V> newNode =  getValue(modifs).deleteAndBalance(value, modifs);
 		if(newNode == null) isEmpty = true;
 		else setValuePosition(newNode.valuePosition(modifs), modifs);
 		return isEmpty;
 	}
 
-	protected void storeValue(String id, long positionId, CacheModifications modifs) throws IOException, StorageException, SerializationException {
-		NodeId root = getValue(modifs);
-		if(root == null) root = new NodeId(positionId, this.index, modifs);
-		else root = (NodeId) root.addAndBalance(id, positionId, null, modifs);
+	@SuppressWarnings("unchecked")
+	protected void storeValue(V id, long positionId, CacheModifications modifs) throws IOException, StorageException, SerializationException {
+		SingletonNode<V> root = getValue(modifs);
+		if(root == null) root = new SingletonNode<>(positionId, this.index, (Class<V>)id.getClass(), modifs);
+		else root = (SingletonNode<V>) root.addAndBalance(id, positionId, null, modifs);
 		setValuePosition(root.getPosition(), modifs);
 	}
 }

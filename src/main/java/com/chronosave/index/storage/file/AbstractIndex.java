@@ -24,7 +24,7 @@ import com.chronosave.index.utils.BiKeyCache;
 import com.chronosave.index.utils.TriKeyCache;
 
 
-public abstract class AbstractIndex<U , K, V> {
+public abstract class AbstractIndex<U, K, V> {
 	protected boolean isEqual(K ancienneClef, K key) {
 		if(ancienneClef != null && key != null)
 			return ancienneClef.equals(key);
@@ -145,10 +145,20 @@ public abstract class AbstractIndex<U , K, V> {
 	}
 	
 	protected abstract void rebuild(long version) throws IOException, StorageException, SerializationException;
-	protected abstract void delete(String id, long version, CacheModifications modifs) throws IOException, StorageException, SerializationException;
+	protected abstract void delete(String id, CacheModifications modifs) throws IOException, StorageException, SerializationException;
 	@SuppressWarnings("rawtypes")
 	protected abstract Class<? extends AbstractNode> getNodeType();
+	protected abstract long getKeyPosition(K key,  CacheModifications modifs) throws IOException, StorageException, SerializationException;
+	protected abstract void add(K key, V value, CacheModifications modifs) throws StorageException, IOException, SerializationException;
+	protected abstract void addKeyToValue(K key, long keyPosition, V value, long valuePosition, CacheModifications modifs) throws IOException, StorageException, SerializationException;
+	protected abstract void deleteKtoId(K key, V value, CacheModifications modifs) throws IOException, StorageException, SerializationException;
+	protected void delete(String id, long version, CacheModifications modifs) throws IOException, StorageException, SerializationException{
+		delete(id, modifs); //version is used in override method in primary index
+	}
 	
+	protected void add(U objectToAdd, long version, final CacheModifications modifs) throws StorageException, IOException, SerializationException{
+		add(getKey(objectToAdd), computeValue(objectToAdd, version), modifs);//version is used in override method in primary index
+	}
 	protected void clear() throws IOException, StorageException, SerializationException {
 		raf.setLength(0);
 		cache.clear();
@@ -177,7 +187,6 @@ public abstract class AbstractIndex<U , K, V> {
 		return modifs;
 	}
 	
-	protected abstract void add(U objetAAjouter, long version, final CacheModifications modifs) throws StorageException, IOException, SerializationException;
 	protected V computeValue(U object, long version) throws StorageException, IOException, SerializationException {
 		return delegateValue.getValue(object, version);
 
@@ -203,8 +212,15 @@ public abstract class AbstractIndex<U , K, V> {
 		return endOfFile;
 	}
 
+	/**
+	 * return positionBeforeWritting
+	 * @param value
+	 * @param modifs
+	 * @return
+	 * @throws SerializationException
+	 */
 	protected long writeFakeAndCache(Object value, CacheModifications modifs) throws SerializationException{
-		return modifs.addToEnd(value); //return positionBeforeWritting
+		return modifs.addToEnd(value); 
 	}
 	
 	protected <W> W getStuff(long stuffPosition, Class<W> stuffType, CacheModifications modifs) throws IOException, StorageException, SerializationException{
@@ -317,4 +333,5 @@ public abstract class AbstractIndex<U , K, V> {
 		this.rootPosition = positionRacine;
 		write(ROOT_POSITION_POSITION, positionRacine);
 	}
+
 }

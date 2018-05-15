@@ -8,7 +8,7 @@ import com.chronosave.index.storage.exception.SerializationException;
 import com.chronosave.index.storage.exception.StorageException;
 import com.chronosave.index.storage.exception.StoreException;
 
-public abstract class IndexMultiId<U, K> extends IndexBiDirectionalId<U, K>{
+public abstract class IndexMultiId<U, K extends Comparable<K>> extends IndexBiDirectionalId<U, K>{
 
 	/**
 	 * runtime
@@ -45,5 +45,19 @@ public abstract class IndexMultiId<U, K> extends IndexBiDirectionalId<U, K>{
 	protected Class<? extends AbstractNode> getNodeType() {
 		return ComplexNode.class;
 	}
-
+	
+	@SuppressWarnings("unchecked") @Override
+	protected void deleteKtoId(K key, String id, CacheModifications modifs) throws IOException, StorageException, SerializationException {
+		ComplexNode<K, String> complexNode = (ComplexNode<K, String>) getRoot(modifs).findNode(key, modifs);
+		boolean aSupprimer = complexNode.removeValue(id, modifs);
+		if(aSupprimer) setRoot(getRoot(modifs).deleteAndBalance(key, modifs), modifs);
+	}
+	
+	@SuppressWarnings("unchecked") @Override
+	protected void addKeyToValue(K key, long keyPosition, String id, long idPosition, CacheModifications modifs) throws IOException, StorageException, SerializationException {
+		setRoot(getRoot(modifs).addAndBalance(key, keyPosition, NULL, modifs), modifs);
+		ComplexNode<K, String> n = (ComplexNode<K, String>) getRoot(modifs).findNode(key, modifs);
+		n.storeValue(id, idPosition, modifs);
+	}
+	
 }

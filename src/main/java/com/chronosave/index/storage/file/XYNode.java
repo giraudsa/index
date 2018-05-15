@@ -27,7 +27,7 @@ import com.chronosave.index.storage.exception.SerializationException;
  * positionSW -> long
  * positionSE -> long
  */
-public class XYNode<K extends List<Double>> extends AbstractNode<K, NodeId>{
+public class XYNode<K extends List<Double>> extends AbstractNode<K, SingletonNode<String>>{
 
 	private static final byte EMPTY= 0;
 	private static final byte LEAF = 1;
@@ -151,8 +151,8 @@ public class XYNode<K extends List<Double>> extends AbstractNode<K, NodeId>{
 	 * @throws StorageException
 	 * @throws SerializationException
 	 */
-	protected XYNode(long position, AbstractIndex<?,?,?> index, Class<K> keyType, Class<NodeId> valueType) {
-		super(keyType, NodeId.class, index, position);
+	protected XYNode(long position, AbstractIndex<?,?,?> index, Class<K> keyType, Class<SingletonNode<String>> valueType) {
+		super(keyType, valueType, index, position);
 	}
 
 
@@ -168,7 +168,7 @@ public class XYNode<K extends List<Double>> extends AbstractNode<K, NodeId>{
 	 * @throws SerializationException
 	 */
 	protected XYNode(AbstractIndex<?, ?, ?> index, double x, double y, double hw, double hh, XYNode<K> daddy, CacheModifications modifs) throws SerializationException {
-		super(daddy.keyType, NodeId.class, index, index.getEndOfFile());
+		super(daddy.keyType, daddy.valueType, index, index.getEndOfFile());
 		init(x, y, hw, hh, daddy, modifs);
 	}
 	private void init(double x, double y, double hw, double hh, XYNode<K> daddy, CacheModifications modifs) throws SerializationException {
@@ -196,8 +196,9 @@ public class XYNode<K extends List<Double>> extends AbstractNode<K, NodeId>{
 	 * @param modifs
 	 * @throws SerializationException
 	 */
+	@SuppressWarnings("unchecked")
 	protected XYNode(AbstractIndex<?, ?, ?> index, Class<K> keyType, double x, double y, double hw, double hh, CacheModifications modifs) throws SerializationException {
-		super(keyType, NodeId.class, index, index.getEndOfFile());
+		super(keyType, (Class<SingletonNode<String>>)(Object)SingletonNode.class, index, index.getEndOfFile());
 		init(x, y, hw, hh, null, modifs);
 	}
 
@@ -206,7 +207,7 @@ public class XYNode<K extends List<Double>> extends AbstractNode<K, NodeId>{
 	}
 
 	@Override
-	AbstractNode<K, NodeId> addAndBalance(K key, long keyPosition, Long valuePosition, CacheModifications modifs) throws IOException, StorageException, SerializationException {
+	AbstractNode<K, SingletonNode<String>> addAndBalance(K key, long keyPosition, Long valuePosition, CacheModifications modifs) throws IOException, StorageException, SerializationException {
 		if(isRoot(modifs) && !contains(key, modifs)) {
 			XYNode<K> root = newXYRootNode(key, modifs);
 			return root.addAndBalance(key, keyPosition, valuePosition, modifs);
@@ -293,14 +294,14 @@ public class XYNode<K extends List<Double>> extends AbstractNode<K, NodeId>{
 	}
 
 	@Override
-	AbstractNode<K, NodeId> deleteAndBalance(K clef, CacheModifications modifs)throws IOException, StorageException, SerializationException {
+	AbstractNode<K, SingletonNode<String>> deleteAndBalance(K clef, CacheModifications modifs)throws IOException, StorageException, SerializationException {
 		//useless
 		return null;
 	}
 
 	@Override
-	AbstractNode<K, NodeId> findNode(K key, CacheModifications modifs) throws IOException, StorageException, SerializationException {
-		AbstractNode<K, NodeId> ret = null;
+	AbstractNode<K, SingletonNode<String>> findNode(K key, CacheModifications modifs) throws IOException, StorageException, SerializationException {
+		AbstractNode<K, SingletonNode<String>> ret = null;
 		byte nodeType = getNodeType(modifs);
 		if (nodeType == LEAF) {
 			Double x = key.get(0);
@@ -313,7 +314,7 @@ public class XYNode<K extends List<Double>> extends AbstractNode<K, NodeId>{
 		}
 		return ret;
 	}
-	private AbstractNode<K, NodeId> getQuandrantForPoint(K key, CacheModifications modifs) throws IOException, StorageException, SerializationException {
+	private AbstractNode<K, SingletonNode<String>> getQuandrantForPoint(K key, CacheModifications modifs) throws IOException, StorageException, SerializationException {
 		double mx = getX(modifs) + getW(modifs) / 2;
 		double my = getY(modifs) + getH(modifs) / 2;
 		if (key.get(0) < mx) return key.get(1) < my ? getNW(modifs) : getSW(modifs);
@@ -348,19 +349,19 @@ public class XYNode<K extends List<Double>> extends AbstractNode<K, NodeId>{
 		return isEmpty;
 	}
 	protected void insertValue(String id, long positionId, CacheModifications modifs) throws IOException, StorageException, SerializationException {
-		NodeId root = getValue(modifs);
-		if(root == null) root = new NodeId(positionId, this.index, modifs);
-		else root = (NodeId) root.addAndBalance(id, positionId, null, modifs);
+		SingletonNode<String> root = getValue(modifs);
+		if(root == null) root = new SingletonNode<>(positionId, this.index, String.class, modifs);
+		else root = (SingletonNode<String>) root.addAndBalance(id, positionId, null, modifs);
 		setValuePosition(root.getPosition(), modifs);
 	}
-	protected Iterator<NodeId> inTheBox(double xmin, double ymin, double xmax, double ymax) throws IOException, StorageException, SerializationException {
+	protected Iterator<SingletonNode<String>> inTheBox(double xmin, double ymin, double xmax, double ymax) throws IOException, StorageException, SerializationException {
 		return new BoxIterator(xmin, ymin, xmax, ymax);
 	}
 
-	protected class BoxIterator implements Iterator<NodeId>{
+	protected class BoxIterator implements Iterator<SingletonNode<String>>{
 		private Deque<XYNode<K>> toScout = new ArrayDeque<>();
-		private NodeId next;
-		private Iterator<NodeId> currentUnderIterator;
+		private SingletonNode<String> next;
+		private Iterator<SingletonNode<String>> currentUnderIterator;
 		private boolean dejaVu = false;
 		private final double xmin;
 		private final double xmax;
@@ -421,11 +422,11 @@ public class XYNode<K extends List<Double>> extends AbstractNode<K, NodeId>{
 		}
 
 		@Override
-		public NodeId next() {
+		public SingletonNode<String> next() {
 			if(!hasNext())
 				throw new NoSuchElementException();
 			try{
-				NodeId ret = next;
+				SingletonNode<String> ret = next;
 				cacheNext();
 				return ret;
 			}catch (IOException e){

@@ -1,6 +1,9 @@
 package com.chronosave.index.storage.condition;
 
 
+import java.util.Collection;
+import java.util.Collections;
+
 import com.chronosave.index.externe.IdManager;
 import com.chronosave.index.storage.exception.StorageException;
 
@@ -35,5 +38,9 @@ public class GetId<U> implements ComputeKey<String, U>, ComputeValue<String, U> 
 	@Override
 	public Class<U> getObjectType() {
 		return classU;
+	}
+	@Override
+	public Collection<String> getKeys(U objectToAdd) throws StorageException {
+		return Collections.singletonList(idManager.getId(objectToAdd));
 	}
 }

@@ -31,8 +31,8 @@ public class SimpleNode<K extends Comparable<K>, V> extends Node1D<K, V>{
 	 * @throws StorageException
 	 * @throws SerializationException 
 	 */
-	public SimpleNode(long keyPosition, Long valuePosition, AbstractIndex<?, ?, ?> index, CacheModifications modifs, Class<K> keyType, Class<V> valueType) throws StorageException, SerializationException {
-		super(keyPosition, valuePosition, index, modifs, keyType, valueType);
+	public SimpleNode(long keyPosition, Long valuePosition, AbstractIndex<?, ?, ?> index, Class<K> keyType, Class<V> valueType, CacheModifications modifs) throws StorageException, SerializationException {
+		super(keyPosition, valuePosition, index, keyType, valueType, modifs);
 	}
 
 	/**
@@ -48,7 +48,7 @@ public class SimpleNode<K extends Comparable<K>, V> extends Node1D<K, V>{
 
 	@Override
 	protected Node1D<K, V> newNode(long keyPosition, Long valuePosition, AbstractIndex<?, ?, ?> index, CacheModifications modifs) throws IOException, StorageException, SerializationException {
-		return new SimpleNode<>(keyPosition, valuePosition, index, modifs, keyType, valueType);
+		return new SimpleNode<>(keyPosition, valuePosition, index, keyType, valueType, modifs);
 	}
 
 	@Override

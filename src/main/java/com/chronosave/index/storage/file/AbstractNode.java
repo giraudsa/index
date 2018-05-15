@@ -69,6 +69,7 @@ public abstract class AbstractNode<K, V> {
 	protected V getValue(CacheModifications modifs) throws IOException, StorageException, SerializationException {
 		return index.getStuff(valuePosition(modifs), valueType, modifs);
 	}
+	
 
 	protected void init(long keyPosition, long valuePosition, CacheModifications modifs) throws SerializationException {
 		modifs.addCache(nodePosition, this);

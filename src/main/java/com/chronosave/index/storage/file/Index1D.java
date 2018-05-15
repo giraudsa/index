@@ -51,14 +51,17 @@ public abstract class Index1D<U, K, V extends Comparable<V>> extends AbstractInd
 	}
 	
 	@Override
-	protected void add(U objectToAdd, long version, final CacheModifications modifs) throws StorageException, IOException, SerializationException {
-		add(getKey(objectToAdd), computeValue(objectToAdd, version), modifs);
+	protected long getKeyPosition(K key, CacheModifications modifs) throws IOException, StorageException, SerializationException {
+		if(key == null) return NULL;
+		AbstractNode<K, ?> node = getRoot(modifs).findNode(key, modifs);
+		return node == null ? writeFakeAndCache(key, modifs) : node.valuePosition(modifs);
 	}
 	
-	private void add(K key, V value, final CacheModifications modifs) throws SerializationException, IOException, StorageException {
+	@Override
+	protected void add(K key, V value, final CacheModifications modifs) throws SerializationException, IOException, StorageException {
 		long keyPosition = writeFakeAndCache(key, modifs);
 		long valuePosition = writeFakeAndCache(value, modifs);
-		setRoot(getRoot(modifs).addAndBalance(key, keyPosition, valuePosition, modifs), modifs);
+		add(key, keyPosition, value, valuePosition, modifs);
 	}
 
 	protected void setRoot(AbstractNode<K, ?> abstractNode, CacheModifications modifs){
@@ -84,9 +87,18 @@ public abstract class Index1D<U, K, V extends Comparable<V>> extends AbstractInd
 		for(String id : store.getPrimaryIndex()) {
 			CacheModifications modifs = new CacheModifications(this, version);
 			U obj = store.getObjectById(id);
-			add(obj, store.getVersion(), modifs);
+			add(obj, version, modifs);
 			modifs.writeWithoutChangingVersion();
 		}
 		setVersion(version);
+	}
+
+	protected void add(K key, long keyPosition, V value, long valuePosition, CacheModifications modifs) throws StorageException, IOException, SerializationException {
+		addKeyToValue(key, keyPosition, value, valuePosition, modifs);
+	}
+	
+	@Override
+	protected void addKeyToValue(K key, long keyPosition, V value, long idPosition, CacheModifications modifs) throws IOException, StorageException, SerializationException {
+		setRoot(getRoot(modifs).addAndBalance(key, keyPosition, idPosition, modifs), modifs);
 	}
 }

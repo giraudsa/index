@@ -12,29 +12,13 @@ import com.chronosave.index.storage.exception.SerializationException;
 
 public class PersistentIdSet<U> extends Index1D<U, String, String> implements Closeable{
 	
-	private static final Class<NodeId> simpleNodeType = NodeId.class;
-	
-
 	protected PersistentIdSet(Class<U> type, Store<U> store) throws IOException, StorageException, SerializationException{
 		super(String.class, String.class, Paths.get(UUID.randomUUID().toString()), store, new GetId<U>(type, store.getIdManager()), new GetId<U>(type, store.getIdManager()));
 	}
 
-
-	@Override
-	protected void rebuild(long version){
-		//nothing to do
-	}
-
-
-	@Override
-	protected void delete(String id, long version, CacheModifications modifs) {
-		//nothing to do
-	}
-
-
 	@SuppressWarnings("rawtypes") @Override
 	protected Class<? extends AbstractNode> getNodeType() {
-		return simpleNodeType;
+		return SingletonNode.class;
 	}
 
 
@@ -60,5 +44,29 @@ public class PersistentIdSet<U> extends Index1D<U, String, String> implements Cl
 	private void removeFile() throws IOException {
 		Files.deleteIfExists(file);
 		raf = null;
+	}
+
+//NOTHING TO DO
+
+	@Override
+	protected void rebuild(long version){
+		//nothing to do
+	}
+
+
+	@Override
+	protected void delete(String id, CacheModifications modifs) {
+		//nothing to do
+	}
+
+
+	@Override
+	protected void deleteKtoId(String key, String value, CacheModifications modifs){
+		//nothing to do
+	}
+
+	@Override
+	protected void addKeyToValue(String key, long keyPosition, String value, long valuePosition, CacheModifications modifs) throws IOException, StorageException, SerializationException {
+		//nothing to do
 	}
 }

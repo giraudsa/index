@@ -48,32 +48,35 @@ public class IndexKeyToOneId<U, K extends Comparable<K>> extends IndexBiDirectio
 		return simpleNodeType;
 	}
 	
-	@Override
-	protected void add(U object, long version, final CacheModifications modifs) throws StorageException, IOException, SerializationException {
-		 //the value is the id --> never == null
-		add(getKey(object), computeValue(object, version), modifs);
-	}
-	
-	private void add(K key, String id, CacheModifications modifs) throws IOException, StorageException, SerializationException {
-		AbstractNode<String, K> oldReverseNode = getReverseRoot(modifs).findNode(id, modifs);
+	@SuppressWarnings("unchecked") @Override
+	protected void add(K key, String id, CacheModifications modifs) throws IOException, StorageException, SerializationException {
+		AbstractNode<String, K> oldReverseNode = (AbstractNode<String, K>) getReverseRoot(modifs).findNode(id, modifs);
 		if(oldReverseNode != null) {
 			K oldKey = oldReverseNode.getValue(modifs);
 			if(isEqual(oldKey, key)) return;//nothing to do
-			setRoot(getRoot(modifs).deleteAndBalance(oldKey, modifs), modifs);
+			deleteKtoId(oldKey, id, modifs);
 		}
-		long keyPosition = key == null ? NULL : writeFakeAndCache(key, modifs);
-		long valuePosition = writeFakeAndCache(id, modifs);
-		setRoot(getRoot(modifs).addAndBalance(key, keyPosition, valuePosition, modifs), modifs);
-		setReverseRoot((ReverseSimpleNode<K, String>) getReverseRoot(modifs).addAndBalance(id, valuePosition, keyPosition, modifs), modifs);
+		add(key, getKeyPosition(key, modifs), id, getIdPosition(id, modifs), modifs);
 	}
 
-	protected void delete(String id, long version, CacheModifications modifs) throws IOException, StorageException, SerializationException{
+	@SuppressWarnings("unchecked")
+	protected void delete(String id, CacheModifications modifs) throws IOException, StorageException, SerializationException{
 		if(id == null) return;
-		AbstractNode<String, K> reverseNode = getReverseRoot(modifs).findNode(id,modifs);
+		AbstractNode<String, ?> reverseNode = getReverseRoot(modifs).findNode(id,modifs);
 		if(reverseNode == null)
 			return; //nothing to do
-		K key = reverseNode.getValue(modifs);
+		K key = (K) reverseNode.getValue(modifs);
+		delete(key, id, modifs);
+	}
+
+	@Override
+	protected void deleteKtoId(K key, String value, CacheModifications modifs) throws IOException, StorageException, SerializationException {
 		setRoot(getRoot(modifs).deleteAndBalance(key, modifs), modifs);
-		setReverseRoot((ReverseSimpleNode<K, String>) getReverseRoot(modifs).deleteAndBalance(id, modifs), modifs);
+	}
+	
+
+	@SuppressWarnings("unchecked") @Override
+	protected Class<? extends AbstractNode<String, ?>> getReverseNodeType() {
+		return (Class<? extends AbstractNode<String, ?>>) ReverseSimpleNode.class;
 	}
 }

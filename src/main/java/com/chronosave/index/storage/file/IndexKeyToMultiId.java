@@ -55,62 +55,50 @@ public class IndexKeyToMultiId<U, K extends Comparable<K>> extends IndexMultiId<
 		super(file, store);
 	}
 	
-	@Override
-	protected void add(U objectToAdd, long version, final CacheModifications modifs) throws StorageException, IOException, SerializationException {
-		K key = getKey(objectToAdd);
-		String id = computeValue(objectToAdd, version);
-		add(key, id, modifs);
-	}
-	
 	@SuppressWarnings("unchecked")
-	private void add(K key, String id, final CacheModifications modifs) throws StorageException, IOException, SerializationException {
-		AbstractNode<String, K> oldReverseNode = getReverseRoot(modifs).findNode(id, modifs);
-		long idPosition = NULL;
+	protected void add(K key, String id, final CacheModifications modifs) throws StorageException, IOException, SerializationException {
+		ReverseSimpleNode<K, String> oldReverseNode = (ReverseSimpleNode<K, String>) getReverseRoot(modifs).findNode(id, modifs);
 		if(oldReverseNode != null) {
-			idPosition = oldReverseNode.keyPosition(modifs);
 			K oldKey = oldReverseNode.getValue(modifs);
 			if(isEqual(oldKey,key)) return;//nothing to do
-			ComplexNode<K> oldComplexNode = (ComplexNode<K>) getRoot(modifs).findNode(oldKey, modifs);
-			boolean mustDeleteOldComplexNode = oldComplexNode.supprimerId(id, modifs);
+			ComplexNode<K, String> oldComplexNode = (ComplexNode<K, String>) getRoot(modifs).findNode(oldKey, modifs);
+			boolean mustDeleteOldComplexNode = oldComplexNode.removeValue(id, modifs);
 			if(mustDeleteOldComplexNode) setRoot(getRoot(modifs).deleteAndBalance(oldKey, modifs), modifs);
 		}
-		idPosition = idPosition == NULL ? writeFakeAndCache(id, modifs) : idPosition;
-		long keyPosition = key == null ? NULL : writeFakeAndCache(key, modifs);
-		setRoot(getRoot(modifs).addAndBalance(key, keyPosition, NULL, modifs), modifs);
-		ComplexNode<K> n = (ComplexNode<K>) getRoot(modifs).findNode(key, modifs);
-		n.storeValue(id, idPosition, modifs);
-		setReverseRoot((ReverseSimpleNode<K, String>) getReverseRoot(modifs).addAndBalance(id, idPosition, keyPosition, modifs), modifs);
+		add(key, getKeyPosition(key, modifs), id, getIdPosition(id, modifs), modifs);
+	}
+	
+
+	@SuppressWarnings("unchecked") @Override
+	protected void delete(String id, CacheModifications modifs) throws IOException, StorageException, SerializationException {
+		AbstractNode<String, K> reverseNode = (AbstractNode<String, K>) getReverseRoot(modifs).findNode(id, modifs);
+		if(reverseNode == null)
+			return;//nothing to do
+		K oldKey = reverseNode.getValue(modifs);
+		delete(oldKey, id, modifs);
 	}
 
 	@SuppressWarnings("unchecked") @Override
-	protected void delete(String id, long version, CacheModifications modifs) throws IOException, StorageException, SerializationException {
-		AbstractNode<String, K> reverseNode = getReverseRoot(modifs).findNode(id, modifs);
-		if(reverseNode == null)
-			return;//nothing to do
-		setReverseRoot((ReverseSimpleNode<K, String>) getReverseRoot(modifs).deleteAndBalance(id, modifs), modifs);
-		K oldKey = reverseNode.getValue(modifs);
-		ComplexNode<K> complexNode = (ComplexNode<K>) getRoot(modifs).findNode(oldKey, modifs);
-		boolean mustDeleteOldComplexNode = complexNode.supprimerId(id, modifs);
-		if(mustDeleteOldComplexNode) setRoot(getRoot(modifs).deleteAndBalance(oldKey, modifs), modifs);
+	protected Class<? extends AbstractNode<String, ?>> getReverseNodeType() {
+		return (Class<? extends AbstractNode<String, ?>>) ReverseSimpleNode.class;
 	}
 
-	
 	@SuppressWarnings("unchecked")
 	public CloseableIterator<String> getBetween(K min, K max, ReadWriteLock locker) throws IOException, StorageException, SerializationException, InterruptedException {
-		return new NodeIterator((ComplexNode<K>) getRoot(null), min, max, locker);
+		return new NodeIterator((ComplexNode<K, String>) getRoot(null), min, max, locker);
 	}
 	
 
 	private class NodeIterator implements CloseableIterator<String>{
 
-		private final Iterator<NodeId> complexNodeIterator;
+		private final Iterator<SingletonNode<String>> complexNodeIterator;
 		private final ReadWriteLock locker;
 		private Iterator<String> idNodeIterator;
 		private String next;
 		private boolean hasNext;
 		private boolean closed = false;
 		
-		private NodeIterator(final ComplexNode<K> root, K min, K max, ReadWriteLock locker) throws InterruptedException {
+		private NodeIterator(final ComplexNode<K, String> root, K min, K max, ReadWriteLock locker) throws InterruptedException {
 			locker.lockRead();
 			this.locker = locker;
 			complexNodeIterator = root.iterator(min, max);

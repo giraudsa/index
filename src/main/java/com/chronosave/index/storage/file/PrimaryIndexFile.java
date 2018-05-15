@@ -105,6 +105,13 @@ public class PrimaryIndexFile<U> extends Index1D<U, String, Long> implements Ite
 		setRoot(getRoot(modifs).deleteAndBalance(id, modifs), modifs);
 	}
 	
+	@Override
+	protected void deleteKtoId(String key, Long value, CacheModifications modifs){/* nothing to do*/}
+
+	@Override
+	protected void delete(String id, CacheModifications modifs){/* nothing to do*/}
+
+
 	private class NodeIterator implements Iterator<String>{
 
 		private final Iterator<String> idIterator;

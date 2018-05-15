@@ -65,7 +65,7 @@ public abstract class Node1D<K extends Comparable<K>, V> extends AbstractNode<K,
 	 * @param valueType
 	 * @throws SerializationException
 	 */
-	protected Node1D(long keyPosition, Long valuePosition, AbstractIndex<?,?,?> index, CacheModifications modifs, Class<K> keyType, Class<V> valueType) throws SerializationException { //a ecrire sur le disque 
+	protected Node1D(long keyPosition, Long valuePosition, AbstractIndex<?,?,?> index, Class<K> keyType, Class<V> valueType, CacheModifications modifs) throws SerializationException { //a ecrire sur le disque 
 		super(keyType, valueType, index, modifs.getEndOfFile(), modifs);
 		nodeInit(keyPosition, valuePosition, modifs);
 	}
@@ -121,6 +121,10 @@ public abstract class Node1D<K extends Comparable<K>, V> extends AbstractNode<K,
 		if(areEquals(key, getKey(modifs))) return this;
 		if(k1IsLessThanK2(key, getKey(modifs))) return getLeft(modifs) == null ? null : getLeft(modifs).findNode(key, modifs);
 		return getRight(modifs) == null ? null : getRight(modifs).findNode(key, modifs);
+	}
+	
+	protected boolean containKey(K key, CacheModifications modifs) throws IOException, StorageException, SerializationException {
+		return findNode(key, modifs) != null;
 	}
 
 	private Node1D<K, V> balance(CacheModifications modifs) throws StorageException, IOException, SerializationException{
@@ -241,7 +245,7 @@ public abstract class Node1D<K extends Comparable<K>, V> extends AbstractNode<K,
 		return k2 == null || (k1 != null && k2 != null && k2.compareTo(k1) > 0);
 	}
 
-	protected abstract Node1D<K,V> newNode(long positionClef, Long positionValeur, AbstractIndex<?,?,?> index, CacheModifications modifs) throws IOException, StorageException, SerializationException;
+	protected abstract Node1D<K,V> newNode(long keyPosition, Long valuePosition, AbstractIndex<?,?,?> index, CacheModifications modifs) throws IOException, StorageException, SerializationException;
 
 	
 	public int compareTo(Node1D<K, V> o, CacheModifications modifs){

@@ -42,13 +42,13 @@ public class ReverseSimpleNode<K, V  extends Comparable<V>> extends SimpleNode<V
 	 * @throws StorageException
 	 * @throws SerializationException 
 	 */
-	public ReverseSimpleNode(long keyPosition, long valuePosition, AbstractIndex<?, ?, ?> index, CacheModifications modifs, Class<K> keyType, Class<V> valueType) throws StorageException, SerializationException {
-		super(keyPosition, valuePosition, index, modifs, valueType, keyType);
+	public ReverseSimpleNode(long keyPosition, long valuePosition, AbstractIndex<?, ?, ?> index, Class<K> keyType, Class<V> valueType,  CacheModifications modifs) throws StorageException, SerializationException {
+		super(keyPosition, valuePosition, index, valueType, keyType, modifs);
 	}
 
 	@Override
 	protected Node1D<V, K> newNode(long keyPosition, Long valuePosition, AbstractIndex<?, ?, ?> index, CacheModifications modifs) throws IOException, StorageException, SerializationException {
-		return new ReverseSimpleNode<>(keyPosition, valuePosition, index, modifs, valueType, keyType);
+		return new ReverseSimpleNode<>(keyPosition, valuePosition, index, valueType, keyType, modifs);
 	}
 
 }
