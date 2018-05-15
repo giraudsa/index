@@ -56,7 +56,7 @@ public abstract class AbstractIndex<U , K, V> {
 	
 	
 	private final boolean isPrimary;
-	private Path file;
+	protected Path file;
 	protected RandomAccessFile raf;
 	protected final Class<K> keyType;
 	protected final Class<V> valueType;
@@ -145,7 +145,7 @@ public abstract class AbstractIndex<U , K, V> {
 	}
 	
 	protected abstract void rebuild(long version) throws IOException, StorageException, SerializationException;
-	protected abstract void delete(U object, long version, CacheModifications modifs) throws IOException, StorageException, SerializationException;
+	protected abstract void delete(String id, long version, CacheModifications modifs) throws IOException, StorageException, SerializationException;
 	@SuppressWarnings("rawtypes")
 	protected abstract Class<? extends AbstractNode> getNodeType();
 	
@@ -163,10 +163,10 @@ public abstract class AbstractIndex<U , K, V> {
 		return raf.getFilePointer();
 	}
 	
-	protected CacheModifications deleteObjects(Collection<U> us, long v) throws IOException, StorageException, SerializationException {
+	protected CacheModifications deleteObjects(Collection<String> ids, long v) throws IOException, StorageException, SerializationException {
 		CacheModifications modifs = new CacheModifications(this, v);
-		for(U u : us)
-			delete(u, v, modifs);
+		for(String id : ids)
+			delete(id, v, modifs);
 		return modifs;
 	}
 	

@@ -2,7 +2,6 @@ package com.chronosave.index.storage.file;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 
 import com.chronosave.index.storage.condition.ComputeKey;
 import com.chronosave.index.storage.condition.GetId;
@@ -10,14 +9,12 @@ import com.chronosave.index.storage.exception.StorageException;
 import com.chronosave.index.storage.exception.SerializationException;
 import com.chronosave.index.storage.exception.StoreException;
 
-public abstract class IndexBiDirectionalId<U, K extends Comparable<K>>  extends Index1D<U, K, String> {
+public abstract class IndexBiDirectionalId<U, K>  extends Index1D<U, K, String> {
 	
-	private static Path getPath(Path basePath, Class<?> clazz, String extention, ComputeKey<?, ?> delegateKey) {
-		return Paths.get(basePath.toString(), clazz.getName() + extention + "." + delegateKey.hashCode() + ".0");
-	}
+	
 	
 	private final long reverseRootPositionposition;
-	private long reverseRootPosition;
+	protected long reverseRootPosition;
 	
 		
 	//file
@@ -30,7 +27,7 @@ public abstract class IndexBiDirectionalId<U, K extends Comparable<K>>  extends 
 
 	//runtime
 	protected IndexBiDirectionalId(Path basePath, Class<K> keyType, Store<U> store, String extention, ComputeKey<K, U> delegateKey) throws IOException, StorageException, SerializationException {
-		super(keyType, String.class, getPath(basePath, store.getObjectType(), extention, delegateKey), store, delegateKey,new GetId<>(store.getObjectType(), store.getIdManager()));
+		super(keyType, String.class, getPath(basePath, store.debutNomFichier(), extention, delegateKey), store, delegateKey,new GetId<>(store.getObjectType(), store.getIdManager()));
 		reverseRootPositionposition = positionEndOfHeaderInAbstractIndex;
 		setReverseRootPosition(NULL);
 		rebuild(store.getVersion());
@@ -56,17 +53,6 @@ public abstract class IndexBiDirectionalId<U, K extends Comparable<K>>  extends 
 		return positionEndOfHeaderInAbstractIndex;
 	}
 	
-	@Override
-	protected void rebuild(long version) throws IOException, StorageException, SerializationException {
-		clear();
-		for(String id : store.getPrimaryIndex()) {
-			CacheModifications modifs = new CacheModifications(this, version);
-			U obj = store.getObjectById(id);
-			add(obj, store.getVersion(), modifs);
-			modifs.writeWithoutChangingVersion();
-		}
-		setVersion(version);
-	}
 
 
 	private void setReverseRootPosition(long positionRacineInverse) throws IOException, StorageException {

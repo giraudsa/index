@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -35,7 +34,7 @@ public class Store<U> {
 		this.basePath = basePath;
 		this.marshaller = marshaller;
 		this.idManager = idManager;
-		data = new DataFile<>(basePath, clazz, marshaller, idManager);
+		data = new DataFile<>(basePath, clazz, marshaller);
 		Path filePrimary = PrimaryIndexFile.getFile(basePath, data);
 		if(filePrimary != null) {//file read
 			primaryIndex = new PrimaryIndexFile<>(filePrimary, this, lastGoodVersion);
@@ -51,7 +50,7 @@ public class Store<U> {
 	}
 	
 	protected String debutNomFichier() {
-		return objectType.getName();
+		return data.debutNomFichier();
 	}
 	protected PrimaryIndexFile<U> getPrimaryIndex() {
 		return primaryIndex;
@@ -69,10 +68,10 @@ public class Store<U> {
 		return primaryIndex.getValue(id);
 	}
 
-	protected void delete(Collection<U> us, long v, Collection<CacheModifications> modifs) throws IOException, StorageException, SerializationException {
-		modifs.add(primaryIndex.deleteObjects(us, v));
+	protected void delete(Collection<String> ids, long v, Collection<CacheModifications> modifs) throws IOException, StorageException, SerializationException {
+		modifs.add(primaryIndex.deleteObjects(ids, v));
 		for(AbstractIndex<U, ?, ?> indexe : index.values())
-			modifs.add(indexe.deleteObjects(us, v));
+			modifs.add(indexe.deleteObjects(ids, v));
 	}
 
 	protected <K> CloseableIterator<String> selectIdFromClassWhere(AbstractCondition<K, U> condition, ReadWriteLock locker) throws IOException, StorageException, SerializationException, StoreException, InterruptedException {
@@ -114,11 +113,11 @@ public class Store<U> {
 		return data.writeData(object, version);
 	}
 
-	protected void delete(U objet, long version) throws IOException {
-		data.delete(objet, version);
+	protected void delete(String id, long version) throws IOException {
+		data.delete(id, version);
 	}
 
-	protected Iterator<U> getAllObjectsWithMaxVersionLessThan(long version) throws IOException, StorageException, SerializationException {
+	protected CloseableIterator<U> getAllObjectsWithMaxVersionLessThan(long version) throws IOException, StorageException, SerializationException {
 		return data.getAllObjectsWithMaxVersionLessThan(version, this);
 	}
 
@@ -128,6 +127,7 @@ public class Store<U> {
 			i.rebuild(version);
 		}
 	}
+	
 
 	protected IdManager getIdManager() {
 		return idManager;

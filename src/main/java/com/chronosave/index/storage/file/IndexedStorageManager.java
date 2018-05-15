@@ -189,15 +189,15 @@ public class IndexedStorageManager {
 	 * @throws StoreException
 	 */
 	@SuppressWarnings("unchecked")
-	public <U extends Object> void delete(Collection<U> objects) throws StoreException {
+	public <U extends Object> void delete(Map<String, Class<?>> objects) throws StoreException {
 		try {
 			locker.lockWrite();
 			Collection<CacheModifications> toDo = new ArrayList<>();
 			++lastVersion;
-			MultivalueMap<Store<?>, Object> sortedList = trier(objects);
-			for(Map.Entry<Store<?>, LinkedHashSet<Object>> l : sortedList.entrySet()) {
+			MultivalueMap<Store<?>, String> sortedList = trier(objects);
+			for(Map.Entry<Store<?>, LinkedHashSet<String>> l : sortedList.entrySet()) {
 				Store<U> store = (Store<U>) l.getKey();
-				Collection<U> us = (Collection<U>) l.getValue();
+				Collection<String> us = (Collection<String>) l.getValue();
 				store.delete(us, lastVersion, toDo);
 			}
 			for(CacheModifications modifs : toDo)
@@ -245,6 +245,14 @@ public class IndexedStorageManager {
 		}
 	}
 	
+	private MultivalueMap<Store<?>, String> trier(Map<String, Class<?>> objects) throws ClassNotFoundException, IOException, StorageException, SerializationException, StoreException {
+		MultivalueMap<Store<?>, String> ret = new MultivalueMap<>();
+		for(String id : objects.keySet()) {
+			ret.add(getStore(objects.get(id)), id);
+		}
+		return ret;
+	}
+
 	private <U extends Object> MultivalueMap<Store<?>, Object> trier(Collection<U> objets) throws ClassNotFoundException, IOException, StorageException, SerializationException, StoreException {
 		MultivalueMap<Store<?>, Object> ret = new MultivalueMap<>();
 		for(Object mo : objets) {

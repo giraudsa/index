@@ -8,14 +8,12 @@ import java.io.RandomAccessFile;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Iterator;
 import java.util.NoSuchElementException;
 
-import com.chronosave.index.externe.IdManager;
 import com.chronosave.index.externe.SerializationStore;
-import com.chronosave.index.storage.condition.GetId;
 import com.chronosave.index.storage.exception.StorageException;
 import com.chronosave.index.storage.exception.StorageRuntimeException;
+import com.chronosave.index.utils.CloseableIterator;
 import com.chronosave.index.storage.exception.SerializationException;
 
 public class DataFile<U>{
@@ -28,16 +26,14 @@ public class DataFile<U>{
 		String stringPosition = base.substring(base.lastIndexOf(POINT) + 1);
 		return Long.valueOf(stringPosition);
 	}
-	private final GetId<U> getId;
 	private final Class<U> objectType;
 	private final SerializationStore marshaller;
 	private Path file;
 	private RandomAccessFile ra;
 	private long version;
 	
-	public DataFile(Path basePath, final Class<U> u, SerializationStore marshaller, IdManager idManager) throws IOException, StorageException{
+	public DataFile(Path basePath, final Class<U> u, SerializationStore marshaller) throws IOException, StorageException{
 		this.objectType = u;
-		this.getId = new GetId<>(getObjectType(), idManager);
 		this.marshaller = marshaller;
 		file = IndexedStorageManager.findFirstFileThatBeginsWith(basePath, u.getName() + ".data");
 		if(file == null){
@@ -77,16 +73,16 @@ public class DataFile<U>{
 		return version;
 	}
 	
-	public void delete(U objet, long version) throws IOException {
+	public void delete(String id, long version) throws IOException {
 		long debutSerialisation = ra.length();
 		ra.writeLong(version);
 		ra.writeBoolean(true); //is deleted
-		ra.writeUTF(getId(objet));
+		ra.writeUTF(id);
 		ra.writeLong(debutSerialisation);
 	}
 	
 
-	public Iterator<U> getAllObjectsWithMaxVersionLessThan(long version, Store<U> s) throws IOException, StorageException, SerializationException {
+	public CloseableIterator<U> getAllObjectsWithMaxVersionLessThan(long version, Store<U> s) throws IOException, StorageException, SerializationException {
 		return new ParcoursObjectsMaxVersion(version, s);
 	}
 	
@@ -98,17 +94,8 @@ public class DataFile<U>{
 		return objectType.getName();
 	}
 	
-	private String getId(U object) throws IOException {
-		try {
-			return getId.getKey(object);
-		} catch (StorageException e) {
-			throw new IOException("impossible de récupérer l'id");
-		}
-	}
-
 	
-	
-protected class ParcoursObjectsMaxVersion implements Iterator<U>{
+protected class ParcoursObjectsMaxVersion implements CloseableIterator<U>{
 		private final long versionMax;
 		private final PersistentIdSet<U> dejaVu;
 		private U next;
@@ -197,6 +184,11 @@ protected class ParcoursObjectsMaxVersion implements Iterator<U>{
 		@Override
 		public void remove() {
 			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public void close() throws IOException {
+			dejaVu.close();
 		}
 	}
 }

@@ -179,8 +179,7 @@ public class SpaceIndex<U, K extends List<Double>>  extends AbstractIndex<U, K, 
 	}
 
 	@Override
-	protected void delete(U object, long version, CacheModifications modifs) throws IOException, StorageException, SerializationException {
-		String id = computeValue(object, store.getVersion());
+	protected void delete(String id, long version, CacheModifications modifs) throws IOException, StorageException, SerializationException {
 		AbstractNode<String, K> reverseNode = getReverseRoot(modifs).findNode(id, modifs);
 		if(reverseNode == null)
 			return;//nothing to do

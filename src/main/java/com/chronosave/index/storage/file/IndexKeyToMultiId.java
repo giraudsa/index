@@ -14,7 +14,7 @@ import com.chronosave.index.storage.exception.StoreException;
 import com.chronosave.index.utils.CloseableIterator;
 import com.chronosave.index.utils.ReadWriteLock;
 
-public class IndexKeyToMultiId<U, K extends Comparable<K>> extends IndexBiDirectionalId<U, K>{
+public class IndexKeyToMultiId<U, K extends Comparable<K>> extends IndexMultiId<U, K>{
 
 	private static final String EXTENTION = ".idx1tom";
 	protected static final <U> void feed(Path basePath, Map<ComputeKey<?, U>, AbstractIndex<U, ?, ?>> index, Store<U> store) throws IOException, ClassNotFoundException, StorageException, SerializationException, StoreException{
@@ -26,8 +26,6 @@ public class IndexKeyToMultiId<U, K extends Comparable<K>> extends IndexBiDirect
 			index.put(fc, idx);
 		}
 	}
-	@SuppressWarnings("rawtypes")
-	private Class<ComplexNode> nodeType = ComplexNode.class;	
 	
 	/**
 	 * runtime
@@ -85,8 +83,7 @@ public class IndexKeyToMultiId<U, K extends Comparable<K>> extends IndexBiDirect
 	}
 
 	@SuppressWarnings("unchecked") @Override
-	protected void delete(U objet, long version, CacheModifications modifs) throws IOException, StorageException, SerializationException {
-		String id = computeValue(objet, store.getVersion());
+	protected void delete(String id, long version, CacheModifications modifs) throws IOException, StorageException, SerializationException {
 		AbstractNode<String, K> reverseNode = getReverseRoot(modifs).findNode(id, modifs);
 		if(reverseNode == null)
 			return;//nothing to do
@@ -97,17 +94,13 @@ public class IndexKeyToMultiId<U, K extends Comparable<K>> extends IndexBiDirect
 		if(mustDeleteOldComplexNode) setRoot(getRoot(modifs).deleteAndBalance(oldKey, modifs), modifs);
 	}
 
-	@SuppressWarnings("rawtypes") @Override
-	protected Class<? extends AbstractNode> getNodeType() {
-		return nodeType;
-	}
 	
 	@SuppressWarnings("unchecked")
 	public CloseableIterator<String> getBetween(K min, K max, ReadWriteLock locker) throws IOException, StorageException, SerializationException, InterruptedException {
 		return new NodeIterator((ComplexNode<K>) getRoot(null), min, max, locker);
 	}
 	
-	
+
 	private class NodeIterator implements CloseableIterator<String>{
 
 		private final Iterator<NodeId> complexNodeIterator;

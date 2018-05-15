@@ -3,6 +3,7 @@ package com.chronosave.index.storage.file;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 
 import com.chronosave.index.storage.condition.ComputeKey;
 import com.chronosave.index.storage.condition.ComputeValue;
@@ -10,7 +11,11 @@ import com.chronosave.index.storage.exception.StorageException;
 import com.chronosave.index.storage.exception.SerializationException;
 import com.chronosave.index.storage.exception.StoreException;
 
-public abstract class Index1D<U, K extends Comparable<K>, V extends Comparable<V>> extends AbstractIndex<U, K, V> {
+public abstract class Index1D<U, K, V extends Comparable<V>> extends AbstractIndex<U, K, V> {
+	
+	protected static Path getPath(Path basePath, String debutNomFichier, String extention, ComputeKey<?, ?> delegateKey) {
+		return Paths.get(basePath.toString(), debutNomFichier + extention + "." + delegateKey.hashCode() + ".0");
+	}
 
 	/**
 	 * runtime
@@ -71,5 +76,17 @@ public abstract class Index1D<U, K extends Comparable<K>, V extends Comparable<V
 			throw new StorageException("impossible to create fake node", e);
 		}
 		return (AbstractNode<K, ?>) getStuff(rootPosition, getNodeType(), modifs);
+	}
+	
+	@Override
+	protected void rebuild(long version) throws IOException, StorageException, SerializationException {
+		clear();
+		for(String id : store.getPrimaryIndex()) {
+			CacheModifications modifs = new CacheModifications(this, version);
+			U obj = store.getObjectById(id);
+			add(obj, store.getVersion(), modifs);
+			modifs.writeWithoutChangingVersion();
+		}
+		setVersion(version);
 	}
 }

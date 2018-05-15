@@ -1,6 +1,8 @@
 package com.chronosave.index.storage.file;
 
+import java.io.Closeable;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.UUID;
 
@@ -8,7 +10,7 @@ import com.chronosave.index.storage.condition.GetId;
 import com.chronosave.index.storage.exception.StorageException;
 import com.chronosave.index.storage.exception.SerializationException;
 
-public class PersistentIdSet<U> extends Index1D<U, String, String> {
+public class PersistentIdSet<U> extends Index1D<U, String, String> implements Closeable{
 	
 	private static final Class<NodeId> simpleNodeType = NodeId.class;
 	
@@ -25,7 +27,7 @@ public class PersistentIdSet<U> extends Index1D<U, String, String> {
 
 
 	@Override
-	protected void delete(U object, long version, CacheModifications modifs) {
+	protected void delete(String id, long version, CacheModifications modifs) {
 		//nothing to do
 	}
 
@@ -46,5 +48,17 @@ public class PersistentIdSet<U> extends Index1D<U, String, String> {
 		long idPosition = writeFakeAndCache(id, modifs);
 		setRoot(getRoot(modifs).addAndBalance(id, idPosition, null, modifs), modifs);
 		modifs.writeWithoutChangingVersion();
+	}
+
+
+	public void close() throws IOException {
+		raf.close();
+		removeFile();
+	}
+
+
+	private void removeFile() throws IOException {
+		Files.deleteIfExists(file);
+		raf = null;
 	}
 }

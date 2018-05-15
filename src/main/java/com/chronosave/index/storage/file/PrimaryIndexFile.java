@@ -12,6 +12,7 @@ import com.chronosave.index.storage.exception.StorageException;
 import com.chronosave.index.storage.exception.StorageRuntimeException;
 import com.chronosave.index.storage.exception.SerializationException;
 import com.chronosave.index.storage.exception.StoreException;
+import com.chronosave.index.utils.CloseableIterator;
 
 public class PrimaryIndexFile<U> extends Index1D<U, String, Long> implements Iterable<String> {
 	
@@ -83,11 +84,12 @@ public class PrimaryIndexFile<U> extends Index1D<U, String, Long> implements Ite
 	@Override
 	protected void rebuild(long version) throws IOException, StorageException, SerializationException {
 		clear();
-		Iterator<U> iterator = store.getAllObjectsWithMaxVersionLessThan(version);
-		while(iterator.hasNext()) {
-			CacheModifications modifs = new CacheModifications(this, version);
-			add(iterator.next(), version, modifs);
-			modifs.writeWithoutChangingVersion();
+		try(CloseableIterator<U> iterator = store.getAllObjectsWithMaxVersionLessThan(version)){
+			while(iterator.hasNext()) {
+				CacheModifications modifs = new CacheModifications(this, version);
+				add(iterator.next(), version, modifs);
+				modifs.writeWithoutChangingVersion();
+			}
 		}
 		setVersion(version);
 	}
@@ -98,9 +100,9 @@ public class PrimaryIndexFile<U> extends Index1D<U, String, Long> implements Ite
 	}
 
 	@Override
-	protected void delete(U object, long version, CacheModifications modifs) throws IOException, StorageException, SerializationException {
-		store.delete(object, version);
-		setRoot(getRoot(modifs).deleteAndBalance(getKey(object), modifs), modifs);
+	protected void delete(String id, long version, CacheModifications modifs) throws IOException, StorageException, SerializationException {
+		store.delete(id, version);
+		setRoot(getRoot(modifs).deleteAndBalance(id, modifs), modifs);
 	}
 	
 	private class NodeIterator implements Iterator<String>{

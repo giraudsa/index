@@ -67,9 +67,8 @@ public class IndexKeyToOneId<U, K extends Comparable<K>> extends IndexBiDirectio
 		setReverseRoot((ReverseSimpleNode<K, String>) getReverseRoot(modifs).addAndBalance(id, valuePosition, keyPosition, modifs), modifs);
 	}
 
-	protected void delete(U object, long version, CacheModifications modifs) throws IOException, StorageException, SerializationException{
-		if(object == null) return;
-		String id = computeValue(object, store.getVersion());
+	protected void delete(String id, long version, CacheModifications modifs) throws IOException, StorageException, SerializationException{
+		if(id == null) return;
 		AbstractNode<String, K> reverseNode = getReverseRoot(modifs).findNode(id,modifs);
 		if(reverseNode == null)
 			return; //nothing to do
