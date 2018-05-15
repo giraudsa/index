@@ -125,7 +125,7 @@ public class IndexKeyToMultiId<U, K extends Comparable<K>> extends IndexBiDirect
 		}
 		
 		private void cacheNext() {
-			if(idNodeIterator.hasNext()) {
+			if(idNodeIterator != null && idNodeIterator.hasNext()) {
 				next = idNodeIterator.next();
 				hasNext = true;
 				return;
