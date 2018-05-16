@@ -89,7 +89,7 @@ public class SpaceIndex<U, K extends List<Double>>  extends AbstractIndex<U, K, 
 	
 	private void add(K key, long keyPosition, String id, long idPosition, CacheModifications modifs) throws IOException, StorageException, SerializationException {
 		addKeyToValue(key, keyPosition, id, idPosition, modifs);
-		addValueToKey(key, keyPosition, id, idPosition, modifs);
+		addValueToKey(keyPosition, id, idPosition, modifs);
 	}
 	protected long getIdPosition(String id, CacheModifications modifs) throws IOException, StorageException, SerializationException {
 		AbstractNode<String, ?> reverseNode = getReverseRoot(modifs).findNode(id, modifs);
@@ -103,7 +103,7 @@ public class SpaceIndex<U, K extends List<Double>>  extends AbstractIndex<U, K, 
 		n.insertValue(id, idPosition, modifs);
 	}
 	
-	private void addValueToKey(K key, long keyPosition, String id, long idPosition, CacheModifications modifs) throws IOException, StorageException, SerializationException {
+	private void addValueToKey(long keyPosition, String id, long idPosition, CacheModifications modifs) throws IOException, StorageException, SerializationException {
 		setReverseRoot((ReverseSimpleNode<K, String>) getReverseRoot(modifs).addAndBalance(id, idPosition, keyPosition, modifs), modifs);
 	}
 	/**
