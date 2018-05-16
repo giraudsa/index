@@ -17,7 +17,7 @@ public class ConditionLessThan<K extends  Comparable<K>, U> extends ConditionCom
 
 	private final K valeur;
 	
-	public ConditionLessThan(Class<U> typeObjet, Class<K> typeReturn, ComputeKey<K, U> delegate, K valeur) {
+	public ConditionLessThan(Class<U> typeObjet, Class<K> typeReturn, ComputeComparableKey<K, U> delegate, K valeur) {
 		super(typeObjet, typeReturn, delegate);
 		this.valeur = valeur;
 	}

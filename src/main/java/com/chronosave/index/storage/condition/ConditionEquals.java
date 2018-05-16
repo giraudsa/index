@@ -16,7 +16,7 @@ import com.chronosave.index.utils.ReadWriteLock;
 public class ConditionEquals<K extends  Comparable<K>, U> extends ConditionCompare<K, U> {
 
 	private final K valeurCible;
-	public ConditionEquals(Class<U> typeObjet, Class<K> typeReturn, ComputeKey<K, U> delegate, K valeurcible) {
+	public ConditionEquals(Class<U> typeObjet, Class<K> typeReturn, ComputeComparableKey<K, U> delegate, K valeurcible) {
 		super(typeObjet, typeReturn, delegate);
 		this.valeurCible = valeurcible;
 	}

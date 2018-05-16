@@ -18,7 +18,7 @@ public class ConditionBetween<K extends  Comparable<K>, U> extends ConditionComp
 	private final K min;
 	private final K max;
 	
-	public ConditionBetween(Class<U> typeObjet, Class<K> typeReturn, ComputeKey<K, U> delegate, K min, K max) {
+	public ConditionBetween(Class<U> typeObjet, Class<K> typeReturn, ComputeComparableKey<K, U> delegate, K min, K max) {
 		super(typeObjet, typeReturn, delegate);
 		this.min = max.compareTo(min) > 0 ? min : max;
 		this.max = this.min == min ? max : min;

@@ -15,7 +15,7 @@ import com.chronosave.index.utils.ReadWriteLock;
 
 public class ConditionGreaterThan<K extends  Comparable<K>, U> extends ConditionCompare<K,U> {
 
-	public ConditionGreaterThan(Class<U> typeObjet, Class<K> typeReturn, ComputeKey<K, U> delegate, K valeur) {
+	public ConditionGreaterThan(Class<U> typeObjet, Class<K> typeReturn, ComputeComparableKey<K, U> delegate, K valeur) {
 		super(typeObjet, typeReturn, delegate);
 		this.valeur = valeur;
 	}

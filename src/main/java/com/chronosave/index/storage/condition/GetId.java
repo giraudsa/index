@@ -43,4 +43,8 @@ public class GetId<U> implements ComputeKey<String, U>, ComputeValue<String, U> 
 	public Collection<String> getKeys(U objectToAdd) throws StorageException {
 		return Collections.singletonList(idManager.getId(objectToAdd));
 	}
+	@Override
+	public boolean isMultipleKey() {
+		return false;
+	}
 }

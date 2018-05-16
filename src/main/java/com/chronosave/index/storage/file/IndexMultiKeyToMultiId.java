@@ -35,8 +35,8 @@ public class IndexMultiKeyToMultiId<U, K extends Comparable<K>> extends IndexMul
 	 * @throws StorageException
 	 * @throws SerializationException
 	 */
-	public IndexMultiKeyToMultiId(Path basePath, Class<K> keyType, Store<U> store, String extention, ComputeKey<K, U> delegateKey) throws IOException, StorageException, SerializationException {
-		super(basePath, keyType, store, extention, delegateKey);
+	public IndexMultiKeyToMultiId(Path basePath, Class<K> keyType, Store<U> store, ComputeKey<K, U> delegateKey) throws IOException, StorageException, SerializationException {
+		super(basePath, keyType, store, EXTENTION, delegateKey);
 	}
 	/**
 	 * from file

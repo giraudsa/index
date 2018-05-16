@@ -10,9 +10,9 @@ import java.util.Map;
 import com.chronosave.index.externe.IdManager;
 import com.chronosave.index.externe.SerializationStore;
 import com.chronosave.index.storage.condition.AbstractCondition;
+import com.chronosave.index.storage.condition.ComputeComparableKey;
 import com.chronosave.index.storage.condition.ComputeKey;
-import com.chronosave.index.storage.condition.ConditionBBOX;
-import com.chronosave.index.storage.condition.ConditionCompare;
+import com.chronosave.index.storage.condition.ComputeSpatialKey;
 import com.chronosave.index.storage.exception.StorageException;
 import com.chronosave.index.storage.exception.SerializationException;
 import com.chronosave.index.storage.exception.StoreException;
@@ -75,25 +75,34 @@ public class Store<U> {
 	}
 
 	protected <K> CloseableIterator<String> selectIdFromClassWhere(AbstractCondition<K, U> condition, ReadWriteLock locker) throws IOException, StorageException, SerializationException, StoreException, InterruptedException {
-		if(!index.containsKey(condition.getDelegate())) {
+		ComputeKey<K, U> computeKey = condition.getDelegate();
+		if(!index.containsKey(computeKey)) {
 			locker.lockWrite();
-			if(condition instanceof ConditionBBOX)
-				createIndexSpatial((ConditionBBOX<?, U>)condition);
-			else {
-				createIndexKeyToMultiId((ConditionCompare<?, U>)condition);
-			}
+			createIndex(computeKey);
 			locker.unlockWrite();
 		}
 		return condition.run(index.get(condition.getDelegate()), locker);
 	}
 	
-	private <K extends Comparable<K>> void createIndexKeyToMultiId(ConditionCompare<K, U> condition) throws IOException, StorageException, SerializationException {
-		index.put(condition.getDelegate(), new IndexKeyToMultiId<>(basePath, condition.getTypeReturn(), this, condition.getDelegate()));
-		
+	private void createIndex(ComputeKey<?, U> computeKey) throws IOException, StorageException, SerializationException {
+		if(ComputeKey.isSpatial(computeKey))
+			createIndexSpatial((ComputeSpatialKey<?, U>)computeKey);
+		else if(computeKey.isMultipleKey())
+			createIndexMultiKeyToMultiId((ComputeComparableKey<?, U>)computeKey);
+		else
+			createIndexKeyToMultiId((ComputeComparableKey<?, U>)computeKey);
 	}
 
-	private <K extends List<Double>> void createIndexSpatial(ConditionBBOX<K, U> condition) throws IOException, StorageException, SerializationException {
-		index.put(condition.getDelegate(), new SpaceIndex<>(basePath, condition.getTypeReturn(), this, condition.getDelegate()));
+	private <K extends Comparable<K>> void createIndexMultiKeyToMultiId(ComputeKey<K, U> computeKey) throws IOException, StorageException, SerializationException {
+		index.put(computeKey, new IndexMultiKeyToMultiId<U, K>(basePath, computeKey.getKeyType(), this, computeKey));
+	}
+
+	private <K extends Comparable<K>> void createIndexKeyToMultiId(ComputeKey<K, U> computeKey) throws IOException, StorageException, SerializationException {
+		index.put(computeKey, new IndexKeyToMultiId<>(basePath, computeKey.getKeyType(), this, computeKey));
+	}
+
+	private <K extends List<Double>> void createIndexSpatial(ComputeKey<K, U> computeKey) throws IOException, StorageException, SerializationException {
+		index.put(computeKey, new SpaceIndex<>(basePath, computeKey.getKeyType(), this, computeKey));
 	}
 
 	protected void setVersion(long version) throws IOException {

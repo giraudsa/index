@@ -32,7 +32,7 @@ public class ConditionBBOX<K extends List<Double>, U> extends AbstractCondition<
 	 * @param xmax
 	 * @param ymax
 	 */
-	public ConditionBBOX(Class<U> typeObjet, Class<K> typeReturn, ComputeKey<K, U> delegate, double xmin, double ymin, double xmax, double ymax) {
+	public ConditionBBOX(Class<U> typeObjet, Class<K> typeReturn, ComputeSpatialKey<K, U> delegate, double xmin, double ymin, double xmax, double ymax) {
 		super(typeObjet, typeReturn, delegate);
 		this.xmin = xmin <= xmax ? xmin : xmax;
 		this.ymin = ymin <= ymax ? ymin : ymax;
