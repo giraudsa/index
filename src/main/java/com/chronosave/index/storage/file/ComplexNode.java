@@ -78,9 +78,9 @@ public class ComplexNode<K extends Comparable<K>, V  extends Comparable<V>> exte
 
 	@SuppressWarnings("unchecked")
 	protected void storeValue(V id, long positionId, CacheModifications modifs) throws IOException, StorageException, SerializationException {
-		SingletonNode<V> root = getValue(modifs);
+		AbstractNode<V, V> root = getValue(modifs);
 		if(root == null) root = new SingletonNode<>(positionId, this.index, (Class<V>)id.getClass(), modifs);
-		else root = (SingletonNode<V>) root.addAndBalance(id, positionId, null, modifs);
+		else root = root.addAndBalance(id, positionId, null, modifs);
 		setValuePosition(root.getPosition(), modifs);
 	}
 }
