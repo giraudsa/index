@@ -257,7 +257,6 @@ public abstract class AbstractIndex<U, K, V> {
 	
 	protected synchronized void write(long position, Object value) throws IOException, StorageException{
 		seek(position);
-		Class<?> type = value.getClass();
 		if (value instanceof Date)
 			raf.writeLong(((Date)value).getTime());	
 		else if (value instanceof String)
@@ -268,12 +267,12 @@ public abstract class AbstractIndex<U, K, V> {
 			raf.writeBoolean((Boolean)value);
 		else if (value instanceof Character)
 			raf.writeChar((char)value);
-		else if (List.class.isAssignableFrom(type)) { //List<Double> for lonlat
+		else if (value instanceof List) { //List<Double> for lonlat
 			raf.writeDouble((Double)((List<?>)value).get(0));
 			raf.writeDouble((Double)((List<?>)value).get(0));
 		}
 		else
-			throw new StorageException("type not implemented " + type.getName());
+			throw new StorageException("type not implemented " + value.getClass().getName());
 		endOfFile = raf.length();
 	}
 	
