@@ -9,10 +9,16 @@ import com.chronosave.index.storage.condition.GetId;
 import com.chronosave.index.storage.exception.StorageException;
 import com.chronosave.index.storage.exception.SerializationException;
 import com.chronosave.index.storage.exception.StoreException;
-
-public abstract class IndexBiDirectionalId<U, K>  extends Index1D<U, K, String> {
-	
-	
+/***
+ * 
+ * @author giraudsa
+ *
+ * @param <U> Object
+ * @param <K> Key
+ * @param <N> Value type of Node
+ * @param <R> Value type of Reverse node
+ */
+public abstract class IndexBiDirectionalId<U, K, N, R>  extends Index1D<U, K, String, N> {
 	
 	private final long reverseRootPositionposition;
 	protected long reverseRootPosition;
@@ -34,24 +40,23 @@ public abstract class IndexBiDirectionalId<U, K>  extends Index1D<U, K, String> 
 		rebuild(store.getVersion());
 	}
 	
-	protected void setReverseRoot(AbstractNode<String, ?> node, CacheModifications modifs){
+	protected void setReverseRoot(AbstractNode<String, R> node, CacheModifications modifs){
 		reverseRootPosition = node == null ? NULL : node.getPosition();
 		modifs.add(reverseRootPositionposition, reverseRootPosition);
 	}
 	
-
-	protected AbstractNode<String, ?> getReverseRoot(CacheModifications modifs) throws IOException, StorageException, SerializationException{
+	protected AbstractNode<String, R> getReverseRoot(CacheModifications modifs) throws IOException, StorageException, SerializationException{
 		try {
 			if(reverseRootPosition == NULL) //Fake node
-				return getReverseNodeType().getConstructor(Class.class, Class.class, AbstractIndex.class, CacheModifications.class).newInstance(keyType, String.class, this, modifs);
+				return (AbstractNode<String, R>) getReverseNodeType().getConstructor(Class.class, Class.class, AbstractIndex.class, CacheModifications.class).newInstance(keyType, String.class, this, modifs);
 		} catch (InstantiationException | IllegalAccessException | IllegalArgumentException
 				| InvocationTargetException | NoSuchMethodException | SecurityException e) {
 			throw new StorageException("impossible to create fake node", e);
 		}
-		return (AbstractNode<String, ?>) getStuff(reverseRootPosition, getReverseNodeType(), modifs);
+		return (AbstractNode<String, R>) getStuff(reverseRootPosition, getReverseNodeType(), modifs);
 	}
 	
-	protected abstract Class<? extends AbstractNode<String,?>> getReverseNodeType();
+	protected abstract Class<? extends AbstractNode<String,R>> getReverseNodeType();
 
 	@Override
 	protected long initFile() throws IOException, StorageException, SerializationException {
@@ -74,7 +79,7 @@ public abstract class IndexBiDirectionalId<U, K>  extends Index1D<U, K, String> 
 		write(reverseRootPositionposition, positionRacineInverse);
 	}
 	
-	protected void deleteIdtoK(String id, K oldKey, CacheModifications modifs) throws IOException, StorageException, SerializationException {
+	protected void deleteIdtoK(String id, K key, CacheModifications modifs) throws IOException, StorageException, SerializationException {
 		setReverseRoot(getReverseRoot(modifs).deleteAndBalance(id, modifs), modifs);
 	}
 	protected void addValueToKey(String id, long idPosition, K key, long keyPosition, CacheModifications modifs) throws IOException, StorageException, SerializationException {

@@ -8,12 +8,16 @@ import com.chronosave.index.storage.exception.StorageException;
 import com.chronosave.index.storage.exception.SerializationException;
 import com.chronosave.index.storage.exception.StoreException;
 
-public class IndexKeyToOneId<U, K extends Comparable<K>> extends IndexBiDirectionalId<U, K>{
+/**
+ * 
+ * @author giraudsa
+ *
+ * @param <U> Object
+ * @param <K>Key
+ */
+public class IndexKeyToOneId<U, K extends Comparable<K>> extends IndexBiDirectionalId<U, K, String, K>{
 	private static final String EXTENTION = ".idx1to1";
-	
-	@SuppressWarnings("rawtypes")
-	private static final Class<SimpleNode> simpleNodeType = SimpleNode.class;
-	
+
 	
 	/**
 	 * file
@@ -43,14 +47,15 @@ public class IndexKeyToOneId<U, K extends Comparable<K>> extends IndexBiDirectio
 		super(basePath, keyType, store, EXTENTION, delegateKey);
 	}
 
-	@SuppressWarnings("rawtypes") @Override
-	protected Class<? extends AbstractNode> getNodeType() {
-		return simpleNodeType;
+	@SuppressWarnings("unchecked") @Override
+	protected Class<? extends AbstractNode<K, String>> getNodeType() {
+		return (Class<? extends AbstractNode<K, String>>) SimpleNode.class;
+
 	}
 	
-	@SuppressWarnings("unchecked") @Override
+	@Override
 	protected void add(K key, String id, CacheModifications modifs) throws IOException, StorageException, SerializationException {
-		AbstractNode<String, K> oldReverseNode = (AbstractNode<String, K>) getReverseRoot(modifs).findNode(id, modifs);
+		AbstractNode<String, K> oldReverseNode = getReverseRoot(modifs).findNode(id, modifs);
 		if(oldReverseNode != null) {
 			K oldKey = oldReverseNode.getValue(modifs);
 			if(isEqual(oldKey, key)) return;//nothing to do
@@ -76,7 +81,7 @@ public class IndexKeyToOneId<U, K extends Comparable<K>> extends IndexBiDirectio
 	
 
 	@SuppressWarnings("unchecked") @Override
-	protected Class<? extends AbstractNode<String, ?>> getReverseNodeType() {
-		return (Class<? extends AbstractNode<String, ?>>) ReverseSimpleNode.class;
+	protected Class<? extends AbstractNode<String, K>> getReverseNodeType() {
+		return (Class<? extends AbstractNode<String, K>>) ReverseSimpleNode.class;
 	}
 }

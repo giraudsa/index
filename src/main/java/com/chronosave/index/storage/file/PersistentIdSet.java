@@ -10,17 +10,16 @@ import com.chronosave.index.storage.condition.GetId;
 import com.chronosave.index.storage.exception.StorageException;
 import com.chronosave.index.storage.exception.SerializationException;
 
-public class PersistentIdSet<U> extends Index1D<U, String, String> implements Closeable{
+public class PersistentIdSet<U> extends Index1D<U, String, String, String> implements Closeable{
 	
 	protected PersistentIdSet(Class<U> type, Store<U> store) throws IOException, StorageException, SerializationException{
 		super(String.class, String.class, Paths.get(UUID.randomUUID().toString()), store, new GetId<U>(type, store.getIdManager()), new GetId<U>(type, store.getIdManager()));
 	}
 
-	@SuppressWarnings("rawtypes") @Override
-	protected Class<? extends AbstractNode> getNodeType() {
-		return SingletonNode.class;
+	@SuppressWarnings("unchecked") @Override
+	protected Class<? extends AbstractNode<String, String>> getNodeType() {
+		return (Class<? extends AbstractNode<String, String>>) SingletonNode.class;
 	}
-
 
 	public boolean contains(String id) throws IOException, StorageException, SerializationException {
 		return getRoot(null).findNode(id,null) != null;

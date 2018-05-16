@@ -9,12 +9,10 @@ import com.chronosave.index.storage.exception.StorageException;
 
 public class GetId<U> implements ComputeKey<String, U>, ComputeValue<String, U> {
 	private final IdManager idManager;
-	private final Class<U> classU;
-	public Class<U> getClassU(){
-		return classU;
-	}
-	public GetId(Class<U> classU, IdManager idManager) {
-		this.classU = classU;
+	private final Class<U> typeObject;
+	
+	public GetId(Class<U> typeObject, IdManager idManager) {
+		this.typeObject = typeObject;
 		this.idManager = idManager;
 	}
 
@@ -37,7 +35,7 @@ public class GetId<U> implements ComputeKey<String, U>, ComputeValue<String, U> 
 	}
 	@Override
 	public Class<U> getObjectType() {
-		return classU;
+		return typeObject;
 	}
 	@Override
 	public Collection<String> getKeys(U objectToAdd) throws StorageException {

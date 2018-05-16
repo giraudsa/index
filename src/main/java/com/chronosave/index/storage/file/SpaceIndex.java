@@ -28,7 +28,7 @@ public class SpaceIndex<U, K extends List<Double>>  extends AbstractIndex<U, K, 
 		File[] idxs = IndexedStorageManager.findAllFileThatBeginsWith(basePath, debutNom + EXTENTION);
 		for(File fidx : idxs) {
 			AbstractIndex<U,?, ?> idx = new SpaceIndex<>(fidx.toPath(), stockage);
-			ComputeKey<?, U> fc = (ComputeKey<?, U>) idx.getDelegateKey();
+			ComputeKey<?, U> fc = idx.getDelegateKey();
 			indexes.put(fc, idx);
 		}
 	}
@@ -177,7 +177,7 @@ public class SpaceIndex<U, K extends List<Double>>  extends AbstractIndex<U, K, 
 		setVersion(version);
 	}
 	
-	
+	@Override
 	protected long initFile() throws IOException, StorageException, SerializationException {
 		long positionEndOfHeaderInAbstractIndex = super.initFile();
 		setReverseRootPosition(NULL);
@@ -195,9 +195,9 @@ public class SpaceIndex<U, K extends List<Double>>  extends AbstractIndex<U, K, 
 	}
 	private void delete(K key, String id, CacheModifications modifs) throws IOException, StorageException, SerializationException {
 		deleteKtoId(key, id, modifs);
-		deleteIdtoK(id, key, modifs);
+		deleteId(id, modifs);
 	}
-	private void deleteIdtoK(String id, K key, CacheModifications modifs) throws IOException, StorageException, SerializationException {
+	private void deleteId(String id, CacheModifications modifs) throws IOException, StorageException, SerializationException {
 		setReverseRoot((ReverseSimpleNode<K, String>) getReverseRoot(modifs).deleteAndBalance(id, modifs), modifs);
 	}
 	@Override
@@ -206,7 +206,7 @@ public class SpaceIndex<U, K extends List<Double>>  extends AbstractIndex<U, K, 
 		nodeXY.deleteId(id, modifs);
 	}
 
-	@SuppressWarnings("rawtypes") @Override
+	@SuppressWarnings("rawtypes")
 	protected Class<? extends AbstractNode> getNodeType() {
 		return XYNode.class;
 	}

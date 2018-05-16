@@ -13,14 +13,14 @@ import com.chronosave.index.storage.exception.SerializationException;
 import com.chronosave.index.storage.exception.StorageException;
 import com.chronosave.index.storage.exception.StoreException;
 
-public class IndexMultiKeyToMultiId<U, K extends Comparable<K>> extends IndexMultiId<U, K> {
+public class IndexMultiKeyToMultiId<U, K extends Comparable<K>> extends IndexMultiId<U, K, SingletonNode<K>> {
 	private static final String EXTENTION = ".idxmtom";
 	protected static final <U> void feed(Path basePath, Map<ComputeKey<?, U>, AbstractIndex<U, ?, ?>> index, Store<U> store) throws IOException, ClassNotFoundException, StorageException, SerializationException, StoreException{
 		String debutNom = store.debutNomFichier();
 		File[] idxs = IndexedStorageManager.findAllFileThatBeginsWith(basePath, debutNom + EXTENTION);
 		for(File fidx : idxs) {
 			AbstractIndex<U,?, ?> idx = new IndexMultiKeyToMultiId<>(fidx.toPath(), store);
-			ComputeKey<?, U> fc = (ComputeKey<?, U>) idx.getDelegateKey();
+			ComputeKey<?, U> fc = idx.getDelegateKey();
 			index.put(fc, idx);
 		}
 	}
@@ -58,9 +58,8 @@ public class IndexMultiKeyToMultiId<U, K extends Comparable<K>> extends IndexMul
 		add(new HashSet<>(getKeys(objet)), computeValue(objet, version), modifs);
 	}
 	
-	@SuppressWarnings("unchecked")
 	private void add(Set<K> keys, String id, CacheModifications modifs) throws IOException, StorageException, SerializationException {
-		ReverseComplexNode<K, String> oldReverseNode = (ReverseComplexNode<K, String>) getReverseRoot(modifs).findNode(id, modifs);
+		AbstractNode<String, SingletonNode<K>> oldReverseNode = getReverseRoot(modifs).findNode(id, modifs);
 		Set<K> nothingToDo = new HashSet<>();
 		long idPosition = NULL;
 		if(oldReverseNode != null) {
@@ -78,7 +77,7 @@ public class IndexMultiKeyToMultiId<U, K extends Comparable<K>> extends IndexMul
 			}
 	}
 	
-	@SuppressWarnings("unchecked") @Override
+	@Override
 	protected void delete(String id, CacheModifications modifs) throws IOException, StorageException, SerializationException {
 		ReverseComplexNode<K, String> oldReverseNode = (ReverseComplexNode<K, String>) getReverseRoot(modifs).findNode(id, modifs);
 		if(oldReverseNode != null)
@@ -86,22 +85,22 @@ public class IndexMultiKeyToMultiId<U, K extends Comparable<K>> extends IndexMul
 				delete(oldKey, id, modifs);
 	}
 	
-	@SuppressWarnings("unchecked") @Override
+	@Override
 	protected void addValueToKey(String id, long idPosition, K key, long keyPosition, CacheModifications modifs) throws IOException, StorageException, SerializationException {
 		setReverseRoot(getReverseRoot(modifs).addAndBalance(id, idPosition, keyPosition, modifs), modifs);
 		ReverseComplexNode<K, String> reverse = (ReverseComplexNode<K, String>) getReverseRoot(modifs).findNode(id, modifs);
 		reverse.storeValue(key, keyPosition, modifs);
 	}
 	
-	@SuppressWarnings("unchecked") @Override
+	@Override
 	protected void deleteIdtoK(String id, K oldKey, CacheModifications modifs) throws IOException, StorageException, SerializationException {
 		ReverseComplexNode<K, String> reverseComplexNode = (ReverseComplexNode<K, String>) getReverseRoot(modifs).findNode(id, modifs);
 		boolean aSupprimer = reverseComplexNode.removeValue(oldKey, modifs);
 		if(aSupprimer) setReverseRoot(getReverseRoot(modifs).deleteAndBalance(id, modifs), modifs);
 	}
 	@SuppressWarnings("unchecked") @Override
-	protected Class<? extends AbstractNode<String, ?>> getReverseNodeType() {
-		return (Class<? extends AbstractNode<String, ?>>) ReverseComplexNode.class;
+	protected Class<? extends AbstractNode<String, SingletonNode<K>>> getReverseNodeType() {
+		return (Class<? extends AbstractNode<String, SingletonNode<K>>>) ReverseComplexNode.class;
 	}
 	private Collection<K> getKeys(U objectToAdd) throws StorageException {
 		return getDelegateKey().getKeys(objectToAdd);

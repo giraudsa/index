@@ -14,7 +14,7 @@ import com.chronosave.index.storage.exception.SerializationException;
 import com.chronosave.index.storage.exception.StoreException;
 import com.chronosave.index.utils.CloseableIterator;
 
-public class PrimaryIndexFile<U> extends Index1D<U, String, Long> implements Iterable<String> {
+public class PrimaryIndexFile<U> extends Index1D<U, String, Long, Long> implements Iterable<String> {
 	
 	public static final String EXTENTION = ".primaryIdx";
 	
@@ -26,9 +26,6 @@ public class PrimaryIndexFile<U> extends Index1D<U, String, Long> implements Ite
 	private static Path getPath(Path basePath, String debutNom) {
 		return Paths.get(basePath.toString(), debutNom + EXTENTION + ".0");
 	}
-	
-	@SuppressWarnings("rawtypes")
-	private static final Class<SimpleNode> simpleNodeType = SimpleNode.class;
 	
 	/**
 	 * file
@@ -56,9 +53,9 @@ public class PrimaryIndexFile<U> extends Index1D<U, String, Long> implements Ite
 		super(String.class, Long.class, getPath(basePath, store.debutNomFichier()), store, new GetId<>(store.getObjectType(), store.getIdManager()),new GetIndexedObjectInDataFile<>(store));
 	}
 	
-	@SuppressWarnings("unchecked")
+
 	private Long getPositionInDataFile(String id, CacheModifications modifs) throws IOException, StorageException, SerializationException {
-		AbstractNode<String, Long> node = (AbstractNode<String, Long>)getRoot(modifs).findNode(id, modifs);
+		AbstractNode<String, Long> node = getRoot(modifs).findNode(id, modifs);
 		if(node == null) return null;
 		return node.getValue(modifs);
 	}
@@ -70,7 +67,7 @@ public class PrimaryIndexFile<U> extends Index1D<U, String, Long> implements Ite
 	}
 
 	
-	@SuppressWarnings("unchecked") @Override
+	@Override
 	public Iterator<String> iterator() {
 		try {
 			return new NodeIterator((Node1D<String, Long>)getRoot(null));
@@ -94,9 +91,9 @@ public class PrimaryIndexFile<U> extends Index1D<U, String, Long> implements Ite
 		setVersion(version);
 	}
 	
-	@SuppressWarnings("rawtypes")
-	protected Class<? extends AbstractNode> getNodeType() {
-		return simpleNodeType;
+	@SuppressWarnings("unchecked") @Override
+	protected Class<? extends AbstractNode<String, Long>> getNodeType() {
+		return (Class<? extends AbstractNode<String, Long>>) SimpleNode.class;
 	}
 
 	@Override

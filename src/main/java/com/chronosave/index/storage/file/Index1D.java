@@ -11,7 +11,16 @@ import com.chronosave.index.storage.exception.StorageException;
 import com.chronosave.index.storage.exception.SerializationException;
 import com.chronosave.index.storage.exception.StoreException;
 
-public abstract class Index1D<U, K, V extends Comparable<V>> extends AbstractIndex<U, K, V> {
+/**
+ * 
+ * @author giraudsa
+ *
+ * @param <U> Object
+ * @param <K> Key
+ * @param <V> Value
+ * @param <N> Value type of Node
+ */
+public abstract class Index1D<U, K, V extends Comparable<V>, N> extends AbstractIndex<U, K, V> {
 	
 	protected static Path getPath(Path basePath, String debutNomFichier, String extention, ComputeKey<?, ?> delegateKey) {
 		return Paths.get(basePath.toString(), debutNomFichier + extention + "." + delegateKey.hashCode() + ".0");
@@ -50,6 +59,9 @@ public abstract class Index1D<U, K, V extends Comparable<V>> extends AbstractInd
 		super(valueType, file, store, delegateValue);
 	}
 	
+	protected abstract Class<? extends AbstractNode<K, N>> getNodeType();
+
+	
 	@Override
 	protected long getKeyPosition(K key, CacheModifications modifs) throws IOException, StorageException, SerializationException {
 		if(key == null) return NULL;
@@ -69,8 +81,7 @@ public abstract class Index1D<U, K, V extends Comparable<V>> extends AbstractInd
 		modifs.add(ROOT_POSITION_POSITION, rootPosition);
 	}
 	
-	@SuppressWarnings("unchecked")
-	protected AbstractNode<K, ?> getRoot(CacheModifications modifs) throws IOException, StorageException, SerializationException{
+	protected AbstractNode<K, N> getRoot(CacheModifications modifs) throws IOException, StorageException, SerializationException{
 		try {
 			if(rootPosition == NULL) //Fake node
 				return getNodeType().getConstructor(Class.class, Class.class, AbstractIndex.class, CacheModifications.class).newInstance(keyType, valueType, this, modifs);
@@ -78,7 +89,7 @@ public abstract class Index1D<U, K, V extends Comparable<V>> extends AbstractInd
 				| InvocationTargetException | NoSuchMethodException | SecurityException e) {
 			throw new StorageException("impossible to create fake node", e);
 		}
-		return (AbstractNode<K, ?>) getStuff(rootPosition, getNodeType(), modifs);
+		return (AbstractNode<K, N>) getStuff(rootPosition, getNodeType(), modifs);
 	}
 	
 	@Override

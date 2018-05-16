@@ -23,7 +23,14 @@ import com.chronosave.index.storage.exception.StoreException;
 import com.chronosave.index.utils.BiKeyCache;
 import com.chronosave.index.utils.TriKeyCache;
 
-
+/**
+ * 
+ * @author giraudsa
+ *
+ * @param <U> type of object
+ * @param <K> type of key
+ * @param <V> type of value
+ */
 public abstract class AbstractIndex<U, K, V> {
 	protected boolean isEqual(K ancienneClef, K key) {
 		if(ancienneClef != null && key != null)
@@ -146,8 +153,6 @@ public abstract class AbstractIndex<U, K, V> {
 	
 	protected abstract void rebuild(long version) throws IOException, StorageException, SerializationException;
 	protected abstract void delete(String id, CacheModifications modifs) throws IOException, StorageException, SerializationException;
-	@SuppressWarnings("rawtypes")
-	protected abstract Class<? extends AbstractNode> getNodeType();
 	protected abstract long getKeyPosition(K key,  CacheModifications modifs) throws IOException, StorageException, SerializationException;
 	protected abstract void add(K key, V value, CacheModifications modifs) throws StorageException, IOException, SerializationException;
 	protected abstract void addKeyToValue(K key, long keyPosition, V value, long valuePosition, CacheModifications modifs) throws IOException, StorageException, SerializationException;
@@ -239,7 +244,7 @@ public abstract class AbstractIndex<U, K, V> {
 	}
 	
 	@SuppressWarnings({"rawtypes" })
-	private <N extends AbstractNode> AbstractNode readAbstractNode(long nodePosition, Class<N> nodeType) throws StorageException{
+	private <N extends AbstractNode> AbstractNode<?, ?> readAbstractNode(long nodePosition, Class<N> nodeType) throws StorageException{
 		try {
 			Constructor<N> constr = nodeType.getConstructor(long.class, AbstractIndex.class, Class.class, Class.class);
 			return constr.newInstance(nodePosition, this, keyType, valueType);
@@ -314,7 +319,7 @@ public abstract class AbstractIndex<U, K, V> {
 		return store.getMarshaller().unserialize(type, raf);
 	}
 	
-	protected synchronized void setVersion(long ver) throws IOException{
+	protected synchronized void setVersion(long ver) throws IOException, StorageException{
 		if(store.getVersion() < ver)
 			store.setVersion(ver);
 		this.version = ver;
@@ -322,8 +327,9 @@ public abstract class AbstractIndex<U, K, V> {
 		file = Files.move(file, IndexedStorageManager.nextVersion(file, version), ATOMIC_MOVE);
 		newRandomAccessFile();
 	}
-	private void newRandomAccessFile() throws IOException {
+	private void newRandomAccessFile() throws IOException, StorageException {
 		if(!file.toFile().exists())
+			throw new StorageException("the file doesn't exist, permission pb ? : " + file.toString());
 		raf = new RandomAccessFile(file.toFile(), "rw");
 		endOfFile = raf.length();
 	}

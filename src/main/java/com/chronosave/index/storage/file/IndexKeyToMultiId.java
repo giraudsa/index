@@ -14,7 +14,7 @@ import com.chronosave.index.storage.exception.StoreException;
 import com.chronosave.index.utils.CloseableIterator;
 import com.chronosave.index.utils.ReadWriteLock;
 
-public class IndexKeyToMultiId<U, K extends Comparable<K>> extends IndexMultiId<U, K>{
+public class IndexKeyToMultiId<U, K extends Comparable<K>> extends IndexMultiId<U, K, K>{
 
 	private static final String EXTENTION = ".idx1tom";
 	protected static final <U> void feed(Path basePath, Map<ComputeKey<?, U>, AbstractIndex<U, ?, ?>> index, Store<U> store) throws IOException, ClassNotFoundException, StorageException, SerializationException, StoreException{
@@ -22,7 +22,7 @@ public class IndexKeyToMultiId<U, K extends Comparable<K>> extends IndexMultiId<
 		File[] idxs = IndexedStorageManager.findAllFileThatBeginsWith(basePath, debutNom + EXTENTION);
 		for(File fidx : idxs) {
 			AbstractIndex<U,?, ?> idx = new IndexKeyToMultiId<>(fidx.toPath(), store);
-			ComputeKey<?, U> fc = (ComputeKey<?, U>) idx.getDelegateKey();
+			ComputeKey<?, U> fc = idx.getDelegateKey();
 			index.put(fc, idx);
 		}
 	}
@@ -55,23 +55,23 @@ public class IndexKeyToMultiId<U, K extends Comparable<K>> extends IndexMultiId<
 		super(file, store);
 	}
 	
-	@SuppressWarnings("unchecked")
+
 	protected void add(K key, String id, final CacheModifications modifs) throws StorageException, IOException, SerializationException {
-		ReverseSimpleNode<K, String> oldReverseNode = (ReverseSimpleNode<K, String>) getReverseRoot(modifs).findNode(id, modifs);
+		AbstractNode<String, K> oldReverseNode = getReverseRoot(modifs).findNode(id, modifs);
 		if(oldReverseNode != null) {
 			K oldKey = oldReverseNode.getValue(modifs);
 			if(isEqual(oldKey,key)) return;//nothing to do
-			ComplexNode<K, String> oldComplexNode = (ComplexNode<K, String>) getRoot(modifs).findNode(oldKey, modifs);
-			boolean mustDeleteOldComplexNode = oldComplexNode.removeValue(id, modifs);
+			AbstractNode<K, SingletonNode<String>> oldComplexNode = getRoot(modifs).findNode(oldKey, modifs);
+			boolean mustDeleteOldComplexNode = ((ComplexNode<K, String>) oldComplexNode).removeValue(id, modifs);
 			if(mustDeleteOldComplexNode) setRoot(getRoot(modifs).deleteAndBalance(oldKey, modifs), modifs);
 		}
 		add(key, getKeyPosition(key, modifs), id, getIdPosition(id, modifs), modifs);
 	}
 	
 
-	@SuppressWarnings("unchecked") @Override
+	@Override
 	protected void delete(String id, CacheModifications modifs) throws IOException, StorageException, SerializationException {
-		AbstractNode<String, K> reverseNode = (AbstractNode<String, K>) getReverseRoot(modifs).findNode(id, modifs);
+		AbstractNode<String, K> reverseNode = getReverseRoot(modifs).findNode(id, modifs);
 		if(reverseNode == null)
 			return;//nothing to do
 		K oldKey = reverseNode.getValue(modifs);
@@ -79,11 +79,10 @@ public class IndexKeyToMultiId<U, K extends Comparable<K>> extends IndexMultiId<
 	}
 
 	@SuppressWarnings("unchecked") @Override
-	protected Class<? extends AbstractNode<String, ?>> getReverseNodeType() {
-		return (Class<? extends AbstractNode<String, ?>>) ReverseSimpleNode.class;
+	protected Class<? extends AbstractNode<String, K>> getReverseNodeType() {
+		return (Class<? extends AbstractNode<String, K>>) ReverseSimpleNode.class;
 	}
 
-	@SuppressWarnings("unchecked")
 	public CloseableIterator<String> getBetween(K min, K max, ReadWriteLock locker) throws IOException, StorageException, SerializationException, InterruptedException {
 		return new NodeIterator((ComplexNode<K, String>) getRoot(null), min, max, locker);
 	}
