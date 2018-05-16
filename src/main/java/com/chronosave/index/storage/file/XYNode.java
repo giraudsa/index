@@ -171,22 +171,8 @@ public class XYNode<K extends List<Double>> extends AbstractNode<K, SingletonNod
 		super(daddy.keyType, daddy.valueType, index, index.getEndOfFile());
 		init(x, y, hw, hh, daddy, modifs);
 	}
-	private void init(double x, double y, double hw, double hh, XYNode<K> daddy, CacheModifications modifs) throws SerializationException {
-		super.init(NULL, NULL, modifs);
-		index.writeFakeAndCache(x, modifs);
-		index.writeFakeAndCache(y, modifs);
-		index.writeFakeAndCache(hw, modifs);
-		index.writeFakeAndCache(hh, modifs);
-		index.writeFakeAndCache(daddy == null ? NULL : daddy.getPosition() , modifs);//dad node
-		index.writeFakeAndCache(EMPTY, modifs);//node type
-		index.writeFakeAndCache(NULL, modifs);//NW
-		index.writeFakeAndCache(NULL, modifs);//NE
-		index.writeFakeAndCache(NULL, modifs);//SW
-		index.writeFakeAndCache(NULL, modifs);//SE
-	}
-
 	/**
-	 *  runtime
+	 *  root creation
 	 * @param index
 	 * @param clefTYpe
 	 * @param x
@@ -200,6 +186,19 @@ public class XYNode<K extends List<Double>> extends AbstractNode<K, SingletonNod
 	protected XYNode(AbstractIndex<?, ?, ?> index, Class<K> keyType, double x, double y, double hw, double hh, CacheModifications modifs) throws SerializationException {
 		super(keyType, (Class<SingletonNode<String>>)(Object)SingletonNode.class, index, index.getEndOfFile());
 		init(x, y, hw, hh, null, modifs);
+	}
+	private void init(double x, double y, double hw, double hh, XYNode<K> daddy, CacheModifications modifs) throws SerializationException {
+		super.init(NULL, NULL, modifs);
+		index.writeFakeAndCache(x, modifs);
+		index.writeFakeAndCache(y, modifs);
+		index.writeFakeAndCache(hw, modifs);
+		index.writeFakeAndCache(hh, modifs);
+		index.writeFakeAndCache(daddy == null ? NULL : daddy.getPosition() , modifs);//dad node
+		index.writeFakeAndCache(EMPTY, modifs);//node type
+		index.writeFakeAndCache(NULL, modifs);//NW
+		index.writeFakeAndCache(NULL, modifs);//NE
+		index.writeFakeAndCache(NULL, modifs);//SW
+		index.writeFakeAndCache(NULL, modifs);//SE
 	}
 
 	private boolean isRoot(CacheModifications modifs) throws IOException, StorageException, SerializationException {
@@ -242,7 +241,9 @@ public class XYNode<K extends List<Double>> extends AbstractNode<K, SingletonNod
 		double hw = 2 * getW(modifs);
 		double hh = 2 * getH(modifs);
 		boolean east = (x < getX(modifs)) ? true : false;
-		boolean north = (y < getY(modifs)) ? true : false; 
+		boolean west = !east;
+		boolean north = (y < getY(modifs)) ? true : false;
+		boolean south = !north;
 		XYNode<K> root = new XYNode<>(index, keyType, x, y, hw, hh, modifs);
 		this.setOptParent(root, modifs);
 		root.setNodeType(POINTER, modifs);
@@ -250,17 +251,17 @@ public class XYNode<K extends List<Double>> extends AbstractNode<K, SingletonNod
 		XYNode<K> ne;
 		XYNode<K> sw;
 		XYNode<K> se;
-		if(north && east) {//NE
+		if(north && east) {
 			ne = this;
 			nw = new XYNode<>(index, getX(modifs) - getW(modifs), getY(modifs), getW(modifs), getH(modifs), root, modifs);
 			sw = new XYNode<>(index, getX(modifs) - getW(modifs), getY(modifs) - getH(modifs), getW(modifs), getH(modifs), root, modifs);
 			se = new XYNode<>(index, getX(modifs), getY(modifs) - getH(modifs), getW(modifs), getH(modifs), root, modifs);
-		}else if(north && !east){ //NW
+		}else if(north && west){ 
 			ne = new XYNode<>(index, getX(modifs) + getW(modifs), getY(modifs), getW(modifs), getH(modifs), root, modifs);
 			nw = this;
 			sw = new XYNode<>(index, getX(modifs), getY(modifs) - getH(modifs), getW(modifs), getH(modifs), root, modifs);
 			se = new XYNode<>(index, getX(modifs) + getW(modifs), getY(modifs) - getH(modifs), getW(modifs), getH(modifs), root, modifs);
-		}else if(!north && east) { //SE
+		}else if(south && east) { 
 			ne = new XYNode<>(index, getX(modifs), getY(modifs) + getH(modifs), getW(modifs), getH(modifs), root, modifs);
 			nw = new XYNode<>(index, getX(modifs) - getW(modifs), getY(modifs) + getH(modifs), getW(modifs), getH(modifs), root, modifs);
 			sw = new XYNode<>(index, getX(modifs) - getW(modifs), getY(modifs), getW(modifs), getH(modifs), root, modifs);
@@ -332,14 +333,6 @@ public class XYNode<K extends List<Double>> extends AbstractNode<K, SingletonNod
 				(getY(modifs) + getH(modifs)) < top);
 	}
 
-	private boolean isPositionInBox(double left, double bottom, double right, double top, CacheModifications modifs) throws StorageException, IOException, SerializationException {
-		if(getNodeType(modifs) != LEAF)
-			throw new StorageException("cette méthode ne doit pas etre appelé si le noeud n'est pas une feuille");
-		List<Double> xy = getKey(modifs);
-		double x = xy.get(0);
-		double y = xy.get(1);
-		return x >= left && x <= right && y >= bottom && y <= top;
-	}
 	protected boolean deleteId(String id, CacheModifications modifs) throws IOException, StorageException, SerializationException {
 		if(getValue(modifs) == null) return true;
 		boolean isEmpty = false;
@@ -349,9 +342,9 @@ public class XYNode<K extends List<Double>> extends AbstractNode<K, SingletonNod
 		return isEmpty;
 	}
 	protected void insertValue(String id, long positionId, CacheModifications modifs) throws IOException, StorageException, SerializationException {
-		SingletonNode<String> root = getValue(modifs);
+		AbstractNode<String, String> root = getValue(modifs);
 		if(root == null) root = new SingletonNode<>(positionId, this.index, String.class, modifs);
-		else root = (SingletonNode<String>) root.addAndBalance(id, positionId, null, modifs);
+		else root = root.addAndBalance(id, positionId, null, modifs);
 		setValuePosition(root.getPosition(), modifs);
 	}
 	protected Iterator<SingletonNode<String>> inTheBox(double xmin, double ymin, double xmax, double ymax) throws IOException, StorageException, SerializationException {
@@ -419,6 +412,15 @@ public class XYNode<K extends List<Double>> extends AbstractNode<K, SingletonNod
 
 		private boolean stillNodeToScout() {
 			return !toScout.isEmpty() || currentUnderIterator != null;
+		}
+
+		private boolean isPositionInBox(double left, double bottom, double right, double top, CacheModifications modifs) throws StorageException, IOException, SerializationException {
+			if(getNodeType(modifs) != LEAF)
+				throw new StorageException("this method must not be called since we are in a Leaf !");
+			List<Double> xy = getKey(modifs);
+			double x = xy.get(0);
+			double y = xy.get(1);
+			return x >= left && x <= right && y >= bottom && y <= top;
 		}
 
 		@Override

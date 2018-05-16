@@ -158,7 +158,9 @@ public abstract class AbstractIndex<U, K, V> {
 	protected abstract void addKeyToValue(K key, long keyPosition, V value, long valuePosition, CacheModifications modifs) throws IOException, StorageException, SerializationException;
 	protected abstract void deleteKtoId(K key, V value, CacheModifications modifs) throws IOException, StorageException, SerializationException;
 	protected void delete(String id, long version, CacheModifications modifs) throws IOException, StorageException, SerializationException{
-		delete(id, modifs); //version is used in override method in primary index
+		if(this.version > version)
+			return;
+		delete(id, modifs);
 	}
 	
 	protected void add(U objectToAdd, long version, final CacheModifications modifs) throws StorageException, IOException, SerializationException{
@@ -253,39 +255,43 @@ public abstract class AbstractIndex<U, K, V> {
 		}
 	}
 	
-	@SuppressWarnings("unchecked")
 	protected synchronized void write(long position, Object value) throws IOException, StorageException{
 		seek(position);
 		Class<?> type = value.getClass();
 		if (value instanceof Date)
 			raf.writeLong(((Date)value).getTime());	
-		else if (type == String.class)
+		else if (value instanceof String)
 			raf.writeUTF((String)value);
-		else if (type == boolean.class || type == Boolean.class)
-			raf.writeBoolean((boolean)value);
-		else if (type == byte.class || type == Byte.class)
-			raf.writeByte((byte)value);
-		else if (type == long.class || type == Long.class)
-			raf.writeLong((long)value);
-		else if (type == int.class || type == Integer.class)
-			raf.writeInt((int)value);
-		else if (type == short.class || type == Short.class)
-			raf.writeShort((short)value);
-		else if (type == double.class || type == Double.class)
-			raf.writeDouble((double)value);
-		else if (type == float.class || type == Float.class)
-			raf.writeFloat((float)value);
-		else if (type == char.class || type == Character.class)
+		else if (value instanceof Number)
+			writeNumber((Number)value);
+		else if (value instanceof Boolean)
+			raf.writeBoolean((Boolean)value);
+		else if (value instanceof Character)
 			raf.writeChar((char)value);
 		else if (List.class.isAssignableFrom(type)) { //List<Double> for lonlat
-			raf.writeDouble(((List<Double>)value).get(0));
-			raf.writeDouble(((List<Double>)value).get(0));
+			raf.writeDouble((Double)((List<?>)value).get(0));
+			raf.writeDouble((Double)((List<?>)value).get(0));
 		}
 		else
 			throw new StorageException("type not implemented " + type.getName());
 		endOfFile = raf.length();
 	}
 	
+	private void writeNumber(Number value) throws IOException {
+		//Byte, Double, Float, Integer, Long, and Short.
+		if (value instanceof Byte)
+			raf.writeByte(value.byteValue());
+		else if (value instanceof Double)
+			raf.writeDouble(value.doubleValue());
+		else if (value instanceof Float)
+			raf.writeFloat(value.floatValue());
+		else if (value instanceof Integer)
+			raf.writeInt(value.intValue());
+		else if (value instanceof Long)
+			raf.writeLong(value.longValue());
+		else if (value instanceof Short)
+			raf.writeShort(value.shortValue());
+	}
 	@SuppressWarnings("unchecked")
 	private synchronized <T> T readClass(Class<T> type, long position) throws IOException, StorageException, SerializationException {
 		seek(position);

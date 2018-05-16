@@ -206,10 +206,7 @@ public class SpaceIndex<U, K extends List<Double>>  extends AbstractIndex<U, K, 
 		nodeXY.deleteId(id, modifs);
 	}
 
-	@SuppressWarnings("rawtypes")
-	protected Class<? extends AbstractNode> getNodeType() {
-		return XYNode.class;
-	}
+	
 	public CloseableIterator<String> inTheBox(double xmin, double ymin, double xmax, double ymax, ReadWriteLock locker) throws InterruptedException, IOException, StorageException, SerializationException {
 		return new NodeIterator((XYNode<K>) getRoot(null), xmin, ymin, xmax, ymax, locker);
 	}
