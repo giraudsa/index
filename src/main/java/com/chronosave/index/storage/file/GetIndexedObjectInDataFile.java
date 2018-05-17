@@ -2,7 +2,6 @@ package com.chronosave.index.storage.file;
 
 import java.io.IOException;
 
-import com.chronosave.index.externe.IdManager;
 import com.chronosave.index.storage.condition.ComputeValue;
 import com.chronosave.index.storage.exception.StorageException;
 import com.chronosave.index.storage.exception.SerializationException;

@@ -53,7 +53,7 @@ public class SpaceIndex<U, K extends List<Double>>  extends AbstractIndex<U, K, 
 	 */
 	public SpaceIndex(Path basePath, Class<K> keyType, Store<U> store, ComputeKey<K, U> delegateKey)
 			throws IOException, StorageException, SerializationException {
-		super(keyType, String.class, getPath(basePath, store.debutNomFichier(), delegateKey), store, delegateKey, new GetId<>(store.getObjectType(), store.getIdManager()));
+		super(keyType, String.class, getPath(basePath, store.debutNomFichier(), delegateKey), store, delegateKey, new GetId<>(store.getIdManager()));
 		setReverseRootPosition(NULL);
 		rebuild(store.getVersion());
 	}
@@ -70,7 +70,7 @@ public class SpaceIndex<U, K extends List<Double>>  extends AbstractIndex<U, K, 
 	 * @throws StoreException
 	 */
 	public SpaceIndex(Path file, Store<U> store) throws IOException, StorageException, ClassNotFoundException, SerializationException, StoreException {
-		super(String.class, file, store, new GetId<>(store.getObjectType(), store.getIdManager()));
+		super(String.class, file, store, new GetId<>(store.getIdManager()));
 		checkVersion(store.getVersion());
 	}
 	

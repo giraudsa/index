@@ -114,7 +114,7 @@ public abstract class AbstractIndex<U, K, V> {
 		this.keyType = (Class<K>) Class.forName(getStuff(KEY_TYPE_POSITION, String.class, null));
 		positionComputeKey = KEY_TYPE_POSITION + Short.SIZE / 8 + keyType.getName().length();
 		if(isPrimary) {
-			this.delegateKey = (ComputeKey<K, U>)new GetId<>(objectType, store.getIdManager());
+			this.delegateKey = (ComputeKey<K, U>)new GetId<>(store.getIdManager());
 			positionEndOfHeaderInAbstractIndex = positionComputeKey;
 		}else {
 			seek(positionComputeKey);

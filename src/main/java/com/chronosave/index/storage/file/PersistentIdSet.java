@@ -13,7 +13,7 @@ import com.chronosave.index.storage.exception.SerializationException;
 public class PersistentIdSet<U> extends Index1D<U, String, String, String> implements Closeable{
 	
 	protected PersistentIdSet(Class<U> type, Store<U> store) throws IOException, StorageException, SerializationException{
-		super(String.class, String.class, Paths.get(UUID.randomUUID().toString()), store, new GetId<U>(type, store.getIdManager()), new GetId<U>(type, store.getIdManager()));
+		super(String.class, String.class, Paths.get(UUID.randomUUID().toString()), store, new GetId<U>(store.getIdManager()), new GetId<U>(store.getIdManager()));
 	}
 
 	@SuppressWarnings("unchecked") @Override

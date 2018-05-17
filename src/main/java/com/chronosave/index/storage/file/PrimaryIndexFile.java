@@ -50,7 +50,7 @@ public class PrimaryIndexFile<U> extends Index1D<U, String, Long, Long> implemen
 	 * @throws SerializationException 
 	 */
 	protected PrimaryIndexFile(Store<U> store, Path basePath) throws IOException, StorageException, SerializationException{
-		super(String.class, Long.class, getPath(basePath, store.debutNomFichier()), store, new GetId<>(store.getObjectType(), store.getIdManager()),new GetIndexedObjectInDataFile<>(store));
+		super(String.class, Long.class, getPath(basePath, store.debutNomFichier()), store, new GetId<>(store.getIdManager()),new GetIndexedObjectInDataFile<>(store));
 	}
 	
 

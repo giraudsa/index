@@ -23,12 +23,11 @@ public interface ComputeKey<K, U> {
 	public static <K, U> boolean isSpatial(ComputeKey<K, U> computeKey) {
 		return computeKey instanceof ComputeSpatialKey;
 	}
-	
-	
+
 	public Class<K> getKeyType();
-	public Class<U> getObjectType();
 	public K getKey(U object) throws StorageException;
 	public Collection<K> getKeys(U objectToAdd) throws StorageException;
 	
 	public boolean isMultipleKey();
+	
 }

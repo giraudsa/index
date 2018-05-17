@@ -26,7 +26,7 @@ public abstract class IndexBiDirectionalId<U, K, N, R>  extends Index1D<U, K, St
 		
 	//file
 	protected IndexBiDirectionalId(Path file, Store<U> store) throws IOException, StorageException, ClassNotFoundException, SerializationException, StoreException{
-		super(String.class, file, store, new GetId<>(store.getObjectType(), store.getIdManager()));
+		super(String.class, file, store, new GetId<>(store.getIdManager()));
 		reverseRootPositionposition = positionEndOfHeaderInAbstractIndex;
 		reverseRootPosition = getStuff(reverseRootPositionposition, Long.class, null);
 		checkVersion(store.getVersion());
@@ -34,7 +34,7 @@ public abstract class IndexBiDirectionalId<U, K, N, R>  extends Index1D<U, K, St
 
 	//runtime
 	protected IndexBiDirectionalId(Path basePath, Class<K> keyType, Store<U> store, String extention, ComputeKey<K, U> delegateKey) throws IOException, StorageException, SerializationException {
-		super(keyType, String.class, getPath(basePath, store.debutNomFichier(), extention, delegateKey), store, delegateKey,new GetId<>(store.getObjectType(), store.getIdManager()));
+		super(keyType, String.class, getPath(basePath, store.debutNomFichier(), extention, delegateKey), store, delegateKey,new GetId<>(store.getIdManager()));
 		reverseRootPositionposition = positionEndOfHeaderInAbstractIndex;
 		setReverseRootPosition(NULL);
 		rebuild(store.getVersion());
