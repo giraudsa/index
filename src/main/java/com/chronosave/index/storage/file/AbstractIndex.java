@@ -67,7 +67,6 @@ public abstract class AbstractIndex<U, K, V> {
 	protected RandomAccessFile raf;
 	protected final Class<K> keyType;
 	protected final Class<V> valueType;
-	protected final Class<U> objectType;
 	protected final Store<U> store;
 	private long endOfFile;
 	protected long version;
@@ -107,7 +106,6 @@ public abstract class AbstractIndex<U, K, V> {
 		this.delegateValue = delegateValue;
 		
 		this.store = store;
-		this.objectType = store.getObjectType();
 		this.version = IndexedStorageManager.readVersion(file);
 		this.rootPosition = getStuff(ROOT_POSITION_POSITION, Long.class, null);
 		isPrimary = getStuff(IS_PRIMARY_POSITION, Boolean.class, null);
@@ -145,7 +143,6 @@ public abstract class AbstractIndex<U, K, V> {
 		this.delegateValue = delegateValeur;
 		this.delegateKey = delegateKey;
 		this.store = store;
-		this.objectType = store.getObjectType();
 		this.isPrimary = this instanceof PrimaryIndexFile;
 		positionComputeKey = KEY_TYPE_POSITION + Short.SIZE / 8 + keyType.getName().length();
 		this.positionEndOfHeaderInAbstractIndex = initFile();
