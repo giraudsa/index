@@ -25,9 +25,8 @@ public class MemoryIndexManager {
 	public <U> void indexOrUpdate(Collection<U> objects) throws InterruptedException, StorageException {
 		locker.lockWrite();
 		for(U o : objects) {
-			U u = (U)o;
 			Class<U> t = (Class<U>)o.getClass();
-			getClassIndexes(t).addOrUpdate(u);
+			getClassIndexes(t).addOrUpdate(o);
 		}
 		locker.unlockWrite();
 	}
@@ -35,9 +34,8 @@ public class MemoryIndexManager {
 	public <U> void unindex(Collection<U> toBeDeleted) throws StorageException, InterruptedException {
 		locker.lockWrite();
 		for(U o : toBeDeleted) {
-			U u = (U)o;
 			Class<U> t = (Class<U>)o.getClass();
-			getClassIndexes(t).supprimer(u);
+			getClassIndexes(t).supprimer(o);
 		}
 		locker.unlockWrite();
 	}
