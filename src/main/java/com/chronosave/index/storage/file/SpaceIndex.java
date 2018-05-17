@@ -191,7 +191,6 @@ public class SpaceIndex<U, K extends List<Double>>  extends AbstractIndex<U, K, 
 		if(reverseNode == null) return;//nothing to do
 		K oldKey = reverseNode.getValue(modifs);
 		delete(oldKey, id, modifs);
-		deleteKtoId(oldKey, id, modifs);
 	}
 	private void delete(K key, String id, CacheModifications modifs) throws IOException, StorageException, SerializationException {
 		deleteKtoId(key, id, modifs);
