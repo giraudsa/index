@@ -118,8 +118,12 @@ public class Store<U> {
 		return data.getObject(position);
 	}
 	
-	protected Long write(U object, long version) throws IOException, SerializationException {
-		return data.writeData(object, version);
+	protected Long writeData(U object, long version) throws IOException, SerializationException, StorageException {
+		return data.writeData(getId(object), object, version);
+	}
+
+	private String getId(U object) throws StorageException {
+		return idManager.getId(object);
 	}
 
 	protected void delete(String id, long version) throws IOException {
@@ -130,7 +134,7 @@ public class Store<U> {
 		return data.getAllObjectsWithMaxVersionLessThan(version, this);
 	}
 
-	public void clean(long version) throws IOException, StorageException, SerializationException {
+	protected void clean(long version) throws IOException, StorageException, SerializationException {
 		primaryIndex.rebuild(version);
 		for(AbstractIndex<U, ?, ?> i : index.values()) {
 			i.rebuild(version);

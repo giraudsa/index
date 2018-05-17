@@ -59,12 +59,13 @@ public class DataFile<U>{
 		return marshaller.unserialize(getObjectType(), ra);//the id is read in the description
 	}
 	
-	public long writeData(U obj, long version) throws IOException, SerializationException {
+	public long writeData(String id, U obj, long version) throws IOException, SerializationException {
 		long beginingOfSerialisation = ra.length();
 		ra.seek(beginingOfSerialisation);
 		ra.writeLong(version);
 		ra.writeBoolean(false); //is not delete
-		marshaller.serialize(obj, ra);//l'id est contenu dans l'objet
+		ra.writeUTF(id);
+		marshaller.serialize(obj, ra);
 		ra.writeLong(beginingOfSerialisation);
 		return beginingOfSerialisation;
 	}
@@ -127,12 +128,9 @@ protected class ParcoursObjectsMaxVersion implements CloseableIterator<U>{
 				boolean suppr = raf.readBoolean();
 				String id = raf.readUTF();
 				boolean djv = dejaVu.contains(id);
-				long avantId = raf.getFilePointer();
 				if(!djv) dejaVu.addId(id);
-				if(!djv && !suppr) {
-					raf.seek(avantId);
+				if(!djv && !suppr)
 					next = marshaller.unserialize(getObjectType(), raf);
-				}
 			}
 		}
 
