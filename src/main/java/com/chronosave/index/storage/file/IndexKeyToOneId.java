@@ -82,6 +82,6 @@ public class IndexKeyToOneId<U, K extends Comparable<K>> extends IndexBiDirectio
 
 	@SuppressWarnings("unchecked") @Override
 	protected Class<? extends AbstractNode<String, K>> getReverseNodeType() {
-		return (Class<? extends AbstractNode<String, K>>) ReverseSimpleNode.class;
+		return (Class<? extends AbstractNode<String, K>>) SimpleNode.class;
 	}
 }

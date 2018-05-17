@@ -48,7 +48,7 @@ public abstract class IndexBiDirectionalId<U, K, N, R>  extends Index1D<U, K, St
 	protected AbstractNode<String, R> getReverseRoot(CacheModifications modifs) throws IOException, StorageException, SerializationException{
 		try {
 			if(reverseRootPosition == NULL) //Fake node
-				return (AbstractNode<String, R>) getReverseNodeType().getConstructor(Class.class, Class.class, AbstractIndex.class, CacheModifications.class).newInstance(keyType, String.class, this, modifs);
+				return (AbstractNode<String, R>) getReverseNodeType().getConstructor(Class.class, Class.class, AbstractIndex.class, CacheModifications.class).newInstance(String.class, keyType, this, modifs);
 		} catch (InstantiationException | IllegalAccessException | IllegalArgumentException
 				| InvocationTargetException | NoSuchMethodException | SecurityException e) {
 			throw new StorageException("impossible to create fake node", e);

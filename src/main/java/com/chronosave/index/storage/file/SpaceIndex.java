@@ -104,7 +104,7 @@ public class SpaceIndex<U, K extends List<Double>>  extends AbstractIndex<U, K, 
 	}
 	
 	private void addValueToKey(long keyPosition, String id, long idPosition, CacheModifications modifs) throws IOException, StorageException, SerializationException {
-		setReverseRoot((ReverseSimpleNode<K, String>) getReverseRoot(modifs).addAndBalance(id, idPosition, keyPosition, modifs), modifs);
+		setReverseRoot((SimpleNode<String,K>) getReverseRoot(modifs).addAndBalance(id, idPosition, keyPosition, modifs), modifs);
 	}
 	/**
 	 * We are the first. Need to decide the scale.
@@ -152,17 +152,17 @@ public class SpaceIndex<U, K extends List<Double>>  extends AbstractIndex<U, K, 
 		return getStuff(rootPosition, XYNode.class, modifs); //rootPosition may be null
 	}
 	
-	protected void setReverseRoot(ReverseSimpleNode<K, String> node, CacheModifications modifs){
+	protected void setReverseRoot(SimpleNode<String, K> node, CacheModifications modifs){
 		long reverseRootPosition = node == null ? NULL : node.getPosition();
 		modifs.add(reverseRootPositionPosition(), reverseRootPosition);
 	}
 	
 
 	@SuppressWarnings("unchecked")
-	protected ReverseSimpleNode<K, String> getReverseRoot(CacheModifications modifs) throws IOException, StorageException, SerializationException{
+	protected SimpleNode<String, K> getReverseRoot(CacheModifications modifs) throws IOException, StorageException, SerializationException{
 		if(reverseRootPosition(modifs) == NULL)//Fake node
-			return new ReverseSimpleNode<>(keyType, String.class, this, modifs);
-		return getStuff(reverseRootPosition(modifs), ReverseSimpleNode.class, modifs);
+			return new SimpleNode<>(String.class, keyType, this, modifs);
+		return getStuff(reverseRootPosition(modifs), SimpleNode.class, modifs);
 	}
 
 	@Override
@@ -198,7 +198,7 @@ public class SpaceIndex<U, K extends List<Double>>  extends AbstractIndex<U, K, 
 		deleteId(id, modifs);
 	}
 	private void deleteId(String id, CacheModifications modifs) throws IOException, StorageException, SerializationException {
-		setReverseRoot((ReverseSimpleNode<K, String>) getReverseRoot(modifs).deleteAndBalance(id, modifs), modifs);
+		setReverseRoot((SimpleNode<String, K>) getReverseRoot(modifs).deleteAndBalance(id, modifs), modifs);
 	}
 	@Override
 	protected void deleteKtoId(K key, String id, CacheModifications modifs) throws IOException, StorageException, SerializationException {

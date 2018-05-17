@@ -80,7 +80,7 @@ public class IndexKeyToMultiId<U, K extends Comparable<K>> extends IndexMultiId<
 
 	@SuppressWarnings("unchecked") @Override
 	protected Class<? extends AbstractNode<String, K>> getReverseNodeType() {
-		return (Class<? extends AbstractNode<String, K>>) ReverseSimpleNode.class;
+		return (Class<? extends AbstractNode<String, K>>) SimpleNode.class;
 	}
 
 	public CloseableIterator<String> getBetween(K min, K max, ReadWriteLock locker) throws IOException, StorageException, SerializationException, InterruptedException {

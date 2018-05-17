@@ -75,7 +75,7 @@ public class IndexMultiKeyToMultiId<U, K extends Comparable<K>> extends IndexMul
 	
 	@Override
 	protected void delete(String id, CacheModifications modifs) throws IOException, StorageException, SerializationException {
-		ReverseComplexNode<K, String> oldReverseNode = (ReverseComplexNode<K, String>) getReverseRoot(modifs).findNode(id, modifs);
+		ComplexNode<String, K> oldReverseNode = (ComplexNode<String, K>) getReverseRoot(modifs).findNode(id, modifs);
 		if(oldReverseNode != null)
 			for(K oldKey : oldReverseNode.getValue(modifs)) 
 				delete(oldKey, id, modifs);
@@ -84,19 +84,19 @@ public class IndexMultiKeyToMultiId<U, K extends Comparable<K>> extends IndexMul
 	@Override
 	protected void addValueToKey(String id, long idPosition, K key, long keyPosition, CacheModifications modifs) throws IOException, StorageException, SerializationException {
 		setReverseRoot(getReverseRoot(modifs).addAndBalance(id, idPosition, keyPosition, modifs), modifs);
-		ReverseComplexNode<K, String> reverse = (ReverseComplexNode<K, String>) getReverseRoot(modifs).findNode(id, modifs);
+		ComplexNode<String, K> reverse = (ComplexNode<String, K>) getReverseRoot(modifs).findNode(id, modifs);
 		reverse.storeValue(key, keyPosition, modifs);
 	}
 	
 	@Override
 	protected void deleteIdtoK(String id, K oldKey, CacheModifications modifs) throws IOException, StorageException, SerializationException {
-		ReverseComplexNode<K, String> reverseComplexNode = (ReverseComplexNode<K, String>) getReverseRoot(modifs).findNode(id, modifs);
+		ComplexNode<String, K> reverseComplexNode = (ComplexNode<String, K>) getReverseRoot(modifs).findNode(id, modifs);
 		boolean aSupprimer = reverseComplexNode.removeValue(oldKey, modifs);
 		if(aSupprimer) setReverseRoot(getReverseRoot(modifs).deleteAndBalance(id, modifs), modifs);
 	}
 	@SuppressWarnings("unchecked") @Override
 	protected Class<? extends AbstractNode<String, SingletonNode<K>>> getReverseNodeType() {
-		return (Class<? extends AbstractNode<String, SingletonNode<K>>>) ReverseComplexNode.class;
+		return (Class<? extends AbstractNode<String, SingletonNode<K>>>) ComplexNode.class;
 	}
 	private Collection<K> getKeys(U objectToAdd) throws StorageException {
 		return getDelegateKey().getKeys(objectToAdd);
