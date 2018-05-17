@@ -71,7 +71,7 @@ public abstract class Index1D<U, K, V extends Comparable<V>, N> extends Abstract
 	
 	@Override
 	protected void add(K key, V value, final CacheModifications modifs) throws SerializationException, IOException, StorageException {
-		long keyPosition = writeFakeAndCache(key, modifs);
+		long keyPosition = getKeyPosition(key, modifs);
 		long valuePosition = writeFakeAndCache(value, modifs);
 		add(key, keyPosition, value, valuePosition, modifs);
 	}

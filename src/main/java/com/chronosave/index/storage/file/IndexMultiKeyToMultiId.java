@@ -61,20 +61,16 @@ public class IndexMultiKeyToMultiId<U, K extends Comparable<K>> extends IndexMul
 	private void add(Set<K> keys, String id, CacheModifications modifs) throws IOException, StorageException, SerializationException {
 		AbstractNode<String, SingletonNode<K>> oldReverseNode = getReverseRoot(modifs).findNode(id, modifs);
 		Set<K> nothingToDo = new HashSet<>();
-		long idPosition = NULL;
 		if(oldReverseNode != null) {
-			idPosition = oldReverseNode.keyPosition(modifs);
 			for(K oldKey : oldReverseNode.getValue(modifs)) {
 				if(keys.contains(oldKey)) nothingToDo.add(oldKey);
 				else delete(oldKey, id, modifs);
 			}
 		}
-		idPosition = idPosition == NULL ? writeFakeAndCache(id, modifs) : idPosition;
+		long idPosition = getIdPosition(id, modifs);
 		for(K newKey : keys)
-			if(!nothingToDo.contains(newKey)) {
-				long keyPosition = getKeyPosition(newKey, modifs);
-				add(newKey, keyPosition, id, idPosition, modifs);
-			}
+			if(!nothingToDo.contains(newKey))
+				add(newKey, getKeyPosition(newKey, modifs), id, idPosition, modifs);
 	}
 	
 	@Override
