@@ -20,7 +20,6 @@ import com.chronosave.index.storage.exception.StorageException;
 import com.chronosave.index.storage.exception.IndexInstanciationException;
 import com.chronosave.index.storage.exception.SerializationException;
 import com.chronosave.index.storage.exception.StoreException;
-import com.chronosave.index.utils.BiKeyCache;
 import com.chronosave.index.utils.TriKeyCache;
 
 /**
@@ -39,8 +38,6 @@ public abstract class AbstractIndex<U, K, V> {
 
 	}
 	private static final TriKeyCache<AbstractIndex<?,?,?>, Long, Class<?>, Object> cache = new TriKeyCache<>(100000);
-
-	private final BiKeyCache<Long, Class<?>, Object> cacheLocal =  new BiKeyCache<>();
 	public static final long BOOLEAN_BYTES = 1;
 	protected static final long NULL = -1L;
 	protected static final long ROOT_POSITION_POSITION = 0L;
@@ -54,10 +51,7 @@ public abstract class AbstractIndex<U, K, V> {
 	@SuppressWarnings("unchecked")
 	private <W> W readCache(long positionStuff, Class<W> typeStuff) {
 		synchronized (cache) {
-			W w = (W) cacheLocal.get(positionStuff, typeStuff);
-			if(w == null)
-				w = (W) cache.get(this, positionStuff, typeStuff);
-			return w;
+			return (W) cache.get(this, positionStuff, typeStuff);
 		}
 	}
 	

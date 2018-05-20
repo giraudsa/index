@@ -52,7 +52,7 @@ public class SingletonNode<K extends Comparable<K>> extends SimpleNode<K,K>{
 		return new SingletonNode<>(keyPosition, index, keyType, modifs);
 	}
 	@Override
-	protected void setValuePosition(long dummy1, CacheModifications dummy2) {/* no value ! */}
+	protected void setValuePosition(Long dummy1, CacheModifications dummy2) {/* no value ! */}
 	
 	@Override
 	protected K getValue(CacheModifications modifs) throws IOException, StorageException, SerializationException {

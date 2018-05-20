@@ -121,6 +121,7 @@ public class PrimaryIndexFile<U> extends Index1D<U, String, Long, Long> implemen
 		}
 		
 		private void cacheNext() {
+			next = null;
 			while(idIterator.hasNext()){
 				next = idIterator.next();
 				if(next != null)

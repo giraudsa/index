@@ -56,6 +56,7 @@ public class DataFile<U>{
 		ra.skipBytes(Long.BYTES); //We jump the version
 		boolean suppr = ra.readBoolean();
 		if(suppr) return null;
+		ra.readUTF();//id
 		return marshaller.unserialize(getObjectType(), ra);//the id is read in the description
 	}
 	

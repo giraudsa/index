@@ -54,7 +54,7 @@ public class ComplexNode<K extends Comparable<K>, V  extends Comparable<V>> exte
 	}
 
 	@Override
-	protected void keysAreEquals(long valuePosition, CacheModifications modifs){
+	protected void keysAreEquals(Long valuePosition, CacheModifications modifs){
 		//rien a faire
 	}
 

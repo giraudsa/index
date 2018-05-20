@@ -71,7 +71,7 @@ public abstract class AbstractNode<K, V> {
 	}
 	
 
-	protected void init(long keyPosition, long valuePosition, CacheModifications modifs) throws SerializationException {
+	protected void init(long keyPosition, Long valuePosition, CacheModifications modifs) throws SerializationException {
 		modifs.addCache(nodePosition, this);
 		index.writeFakeAndCache(keyPosition, modifs);//positionClef
 		if(!isOnlyKey()) 

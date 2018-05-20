@@ -52,7 +52,7 @@ public class SimpleNode<K extends Comparable<K>, V> extends Node1D<K, V>{
 	}
 
 	@Override
-	protected void keysAreEquals(long valuePosition, CacheModifications modifs) {
+	protected void keysAreEquals(Long valuePosition, CacheModifications modifs) {
 		setValuePosition(valuePosition, modifs);
 	}
 	

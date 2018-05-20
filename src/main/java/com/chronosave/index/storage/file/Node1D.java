@@ -93,7 +93,7 @@ public abstract class Node1D<K extends Comparable<K>, V> extends AbstractNode<K,
 		modifs.add(rightPositionPosition(), rightPosition);
 	}
 
-	protected void setValuePosition(long valuePosition, CacheModifications modifs) {
+	protected void setValuePosition(Long valuePosition, CacheModifications modifs) {
 		modifs.add(valuePositionPosition(), valuePosition);
 	}
 
@@ -235,7 +235,7 @@ public abstract class Node1D<K extends Comparable<K>, V> extends AbstractNode<K,
 		setLeft(g.deleteLeft(modifs), modifs);
 		return balance(modifs);
 	}
-	protected abstract void keysAreEquals(long valuePosition, CacheModifications modifs) throws StorageException;
+	protected abstract void keysAreEquals(Long valuePosition, CacheModifications modifs) throws StorageException;
 
 	private boolean areEquals(K k1, K k2) {
 		return k1 == null && k2 == null || (k2 != null && k1 != null && k1.compareTo(k2) == 0);
@@ -313,7 +313,7 @@ public abstract class Node1D<K extends Comparable<K>, V> extends AbstractNode<K,
 		private void cacheNext() {
 			try{
 				hasNext = false;
-				while (!hasNext || !nodesStack.isEmpty() || current != null) {
+				while (!hasNext && !(nodesStack.isEmpty() && current == null)) {
 					searchNext();
 				}
 			}catch (IOException e){
@@ -326,7 +326,7 @@ public abstract class Node1D<K extends Comparable<K>, V> extends AbstractNode<K,
 		private void searchNext() throws IOException, StorageException, SerializationException {
 			while (current != null) {
 				nodesStack.push(current);
-				if(min != null) {
+				if(min != null && current.getLeft(null) != null) {
 					current = min.compareTo(current.getLeft(null).getKey(null)) <= 0 ? current.getLeft(null) : null;
 				}
 				else current = current.getLeft(null);
@@ -335,8 +335,8 @@ public abstract class Node1D<K extends Comparable<K>, V> extends AbstractNode<K,
 			current = nodesStack.pop();
 			Node1D<K, V> node = current;
 			if(max != null) 
-				current = max.compareTo(current.getKey(null)) >= 0 ? current.getRight(null) : null;
-				else current = current.getRight(null);
+				current = k1IsLessThanK2(current.getKey(null), max) ? current.getRight(null) : null;
+			else current = current.getRight(null);
 			if(constraintsRespected(node.getKey(null))) {
 				hasNext = true;
 				next = node.getValue(null);
@@ -347,7 +347,7 @@ public abstract class Node1D<K extends Comparable<K>, V> extends AbstractNode<K,
 			if(min == null && max == null) return true;
 			if(min == null) return max.compareTo(key) >= 0;
 			if(max == null) return min.compareTo(key) <= 0;
-			return min.compareTo(key) <= 0 && max.compareTo(key) >= 0;
+			return k1IsLessThanK2(min, key) && k1IsLessThanK2(key, max);
 		}
 
 		@Override
