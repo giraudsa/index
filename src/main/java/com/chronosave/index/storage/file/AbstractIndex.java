@@ -168,6 +168,7 @@ public abstract class AbstractIndex<U, K, V> {
 		write(KEY_TYPE_POSITION, keyType.getName());
 		if(!isPrimary)
 			ComputeKey.marshall(delegateKey, raf, store.getMarshaller());
+		endOfFile = raf.length();
 		return raf.getFilePointer();
 	}
 	
@@ -236,11 +237,15 @@ public abstract class AbstractIndex<U, K, V> {
 		return stuff;
 	}
 	
+	protected Class<?> getValueTypeOfNode() {
+		return valueType;
+	}
+	
 	@SuppressWarnings({"rawtypes" })
 	private <N extends AbstractNode> AbstractNode<?, ?> readAbstractNode(long nodePosition, Class<N> nodeType) throws StorageException{
 		try {
 			Constructor<N> constr = nodeType.getConstructor(long.class, AbstractIndex.class, Class.class, Class.class);
-			return constr.newInstance(nodePosition, this, keyType, valueType);
+			return constr.newInstance(nodePosition, this, keyType, getValueTypeOfNode());
 		} catch (InstantiationException | IllegalAccessException | NoSuchMethodException | SecurityException | IllegalArgumentException | InvocationTargetException e) {
 			throw new StorageException("the node type " + nodeType.getName() + " is not instanciable :"  + e.getMessage());
 		}

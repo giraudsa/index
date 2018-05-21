@@ -102,7 +102,10 @@ public class SpaceIndex<U, K extends List<Double>>  extends AbstractIndex<U, K, 
 		XYNode<K> n = (XYNode<K>) getRoot(modifs).findNode(key, modifs);
 		n.insertValue(id, idPosition, modifs);
 	}
-	
+	@Override
+	protected Class<?> getValueTypeOfNode() {
+		return SingletonNode.class;
+	}
 	private void addValueToKey(long keyPosition, String id, long idPosition, CacheModifications modifs) throws IOException, StorageException, SerializationException {
 		setReverseRoot((SimpleNode<String,K>) getReverseRoot(modifs).addAndBalance(id, idPosition, keyPosition, modifs), modifs);
 	}

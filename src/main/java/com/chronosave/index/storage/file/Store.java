@@ -77,9 +77,12 @@ public class Store<U> {
 	protected <K> CloseableIterator<String> selectIdFromClassWhere(AbstractCondition<K, U> condition, ReadWriteLock locker) throws IOException, StorageException, SerializationException, StoreException, InterruptedException {
 		ComputeKey<K, U> computeKey = condition.getDelegate();
 		if(!index.containsKey(computeKey)) {
-			locker.lockWrite();
-			createIndex(computeKey);
-			locker.unlockWrite();
+			try{
+				locker.lockWrite();
+				createIndex(computeKey);
+			}finally {
+				locker.unlockWrite();
+			}
 		}
 		return condition.run(index.get(condition.getDelegate()), locker);
 	}

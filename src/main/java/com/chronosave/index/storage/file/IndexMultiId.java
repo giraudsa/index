@@ -68,4 +68,9 @@ public abstract class IndexMultiId<U, K extends Comparable<K>, R> extends IndexB
 		n.storeValue(id, idPosition, modifs);
 	}
 	
+	@Override
+	protected Class<?> getValueTypeOfNode() {
+		return SingletonNode.class;
+	}
+	
 }

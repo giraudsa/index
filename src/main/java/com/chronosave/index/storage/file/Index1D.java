@@ -84,14 +84,14 @@ public abstract class Index1D<U, K, V extends Comparable<V>, N> extends Abstract
 	protected AbstractNode<K, N> getRoot(CacheModifications modifs) throws IOException, StorageException, SerializationException{
 		try {
 			if(rootPosition == NULL) //Fake node
-				return getNodeType().getConstructor(Class.class, Class.class, AbstractIndex.class, CacheModifications.class).newInstance(keyType, valueType, this, modifs);
+				return getNodeType().getConstructor(Class.class, Class.class, AbstractIndex.class, CacheModifications.class).newInstance(keyType, getValueTypeOfNode(), this, modifs);
 		} catch (InstantiationException | IllegalAccessException | IllegalArgumentException
 				| InvocationTargetException | NoSuchMethodException | SecurityException e) {
 			throw new StorageException("impossible to create fake node", e);
 		}
 		return (AbstractNode<K, N>) getStuff(rootPosition, getNodeType(), modifs);
 	}
-	
+
 	@Override
 	protected void rebuild(long version) throws IOException, StorageException, SerializationException {
 		clear();
