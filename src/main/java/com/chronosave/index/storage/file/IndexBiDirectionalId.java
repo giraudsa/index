@@ -29,7 +29,6 @@ public abstract class IndexBiDirectionalId<U, K, N, R>  extends Index1D<U, K, St
 		super(String.class, file, store, new GetId<>(store.getIdManager()));
 		reverseRootPositionposition = positionEndOfHeaderInAbstractIndex;
 		reverseRootPosition = getStuff(reverseRootPositionposition, Long.class, null);
-		checkVersion(store.getVersion());
 	}
 
 	//runtime

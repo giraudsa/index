@@ -326,9 +326,9 @@ public abstract class Node1D<K extends Comparable<K>, V> extends AbstractNode<K,
 		private void searchNext() throws IOException, StorageException, SerializationException {
 			while (current != null) {
 				nodesStack.push(current);
-				if(min != null && current.getLeft(null) != null) {
-					K leftKey = current.getLeft(null).getKey(null);
-					current = k1IsLessThanK2(min, leftKey) || areEquals(min, leftKey) ? current.getLeft(null) : null;
+				if(min != null) {
+					K key = current.getKey(null);
+					current = k1IsLessThanK2(min, key) || areEquals(min, key) ? current.getLeft(null) : null;
 				}
 				else current = current.getLeft(null);
 			}

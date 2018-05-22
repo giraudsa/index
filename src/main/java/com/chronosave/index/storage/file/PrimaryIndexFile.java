@@ -39,7 +39,6 @@ public class PrimaryIndexFile<U> extends Index1D<U, String, Long, Long> implemen
 	 */
 	protected PrimaryIndexFile(Path file, Store<U> store, long lastGoodVersion) throws IOException, StorageException, ClassNotFoundException, SerializationException, StoreException {
 		super(Long.class, file, store, new GetIndexedObjectInDataFile<>(store));
-		checkVersion(lastGoodVersion);
 	}
 	
 	/**

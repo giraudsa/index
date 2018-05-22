@@ -92,18 +92,6 @@ public abstract class Index1D<U, K, V extends Comparable<V>, N> extends Abstract
 		return (AbstractNode<K, N>) getStuff(rootPosition, getNodeType(), modifs);
 	}
 
-	@Override
-	protected void rebuild(long version) throws IOException, StorageException, SerializationException {
-		clear();
-		for(String id : store.getPrimaryIndex()) {
-			CacheModifications modifs = new CacheModifications(this, version);
-			U obj = store.getObjectById(id);
-			add(obj, version, modifs);
-			modifs.writeWithoutChangingVersion();
-		}
-		setVersion(version);
-	}
-
 	protected void add(K key, long keyPosition, V value, long valuePosition, CacheModifications modifs) throws StorageException, IOException, SerializationException {
 		addKeyToValue(key, keyPosition, value, valuePosition, modifs);
 	}

@@ -22,6 +22,7 @@ import com.chronosave.index.storage.exception.SerializationException;
 import com.chronosave.index.storage.exception.StoreException;
 import com.chronosave.index.utils.TriKeyCache;
 
+
 /**
  * 
  * @author giraudsa
@@ -142,7 +143,19 @@ public abstract class AbstractIndex<U, K, V> {
 		this.positionEndOfHeaderInAbstractIndex = initFile();
 	}
 	
-	protected abstract void rebuild(long version) throws IOException, StorageException, SerializationException;
+	protected void rebuild(long version) throws IOException, SerializationException, StorageException {
+		if(version == this.version)
+			return; //rien a faire
+		clear();
+		for(String id : store.getPrimaryIndex()) {
+			CacheModifications modifs = new CacheModifications(this, version);
+			U obj = store.getObjectById(id);
+			add(obj, store.getVersion(), modifs);
+			modifs.writeWithoutChangingVersion();
+		}
+		setVersion(version);
+	}
+	
 	protected abstract void delete(String id, CacheModifications modifs) throws IOException, StorageException, SerializationException;
 	protected abstract long getKeyPosition(K key,  CacheModifications modifs) throws IOException, StorageException, SerializationException;
 	protected abstract void add(K key, V value, CacheModifications modifs) throws StorageException, IOException, SerializationException;
@@ -193,12 +206,6 @@ public abstract class AbstractIndex<U, K, V> {
 
 	protected K getKey(U object) throws StorageException {
 		return delegateKey.getKey(object);
-	}
-	
-	protected void checkVersion(long lastConsistentVersion) throws IOException, StorageException, SerializationException{
-		if(version > lastConsistentVersion || store.getVersion() > version){
-			rebuild(lastConsistentVersion);
-		}
 	}
 	
 	

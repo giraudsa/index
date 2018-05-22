@@ -38,8 +38,13 @@ public class Store<U> {
 		Path filePrimary = PrimaryIndexFile.getFile(basePath, data);
 		if(filePrimary != null) {//file read
 			primaryIndex = new PrimaryIndexFile<>(filePrimary, this, lastGoodVersion);
+			if(data.getVersion() > lastGoodVersion || primaryIndex.version != data.getVersion())
+				clean(lastGoodVersion);
 			IndexKeyToMultiId.feed(basePath, index, this);
 			SpaceIndex.feed(basePath, index, this);
+			IndexMultiKeyToMultiId.feed(basePath, index, this);
+			for(AbstractIndex<U, ?, ?> i : index.values())
+				i.rebuild(getVersion());
 		}else {//runtime
 			primaryIndex = new PrimaryIndexFile<>(this, basePath);
 		}

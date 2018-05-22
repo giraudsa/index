@@ -46,13 +46,6 @@ public class PersistentIdSet<U> extends Index1D<U, String, String, String> imple
 	}
 
 //NOTHING TO DO
-
-	@Override
-	protected void rebuild(long version){
-		//nothing to do
-	}
-
-
 	@Override
 	protected void delete(String id, CacheModifications modifs) {
 		//nothing to do

@@ -71,7 +71,6 @@ public class SpaceIndex<U, K extends List<Double>>  extends AbstractIndex<U, K, 
 	 */
 	public SpaceIndex(Path file, Store<U> store) throws IOException, StorageException, ClassNotFoundException, SerializationException, StoreException {
 		super(String.class, file, store, new GetId<>(store.getIdManager()));
-		checkVersion(store.getVersion());
 	}
 	
 	protected void add(K key, String id, CacheModifications modifs) throws StorageException, IOException, SerializationException {
@@ -166,18 +165,6 @@ public class SpaceIndex<U, K extends List<Double>>  extends AbstractIndex<U, K, 
 		if(reverseRootPosition(modifs) == NULL)//Fake node
 			return new SimpleNode<>(String.class, keyType, this, modifs);
 		return getStuff(reverseRootPosition(modifs), SimpleNode.class, modifs);
-	}
-
-	@Override
-	protected void rebuild(long version) throws IOException, StorageException, SerializationException {
-		clear();
-		for(String id : store.getPrimaryIndex()) {
-			CacheModifications modifs = new CacheModifications(this, version);
-			U obj = store.getObjectById(id);
-			add(obj, version, modifs);
-			modifs.writeWithoutChangingVersion();
-		}
-		setVersion(version);
 	}
 	
 	@Override
