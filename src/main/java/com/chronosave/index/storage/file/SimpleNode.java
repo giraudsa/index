@@ -2,26 +2,40 @@ package com.chronosave.index.storage.file;
 
 import java.io.IOException;
 
-import com.chronosave.index.storage.exception.StorageException;
 import com.chronosave.index.storage.exception.SerializationException;
+import com.chronosave.index.storage.exception.StorageException;
 
-public class SimpleNode<K extends Comparable<K>, V> extends Node1D<K, V>{
-
-
+public class SimpleNode<K extends Comparable<K>, V> extends Node1D<K, V> {
 
 	/**
 	 * fake node
+	 * 
 	 * @param keyType
 	 * @param valueType
-	 * @param index 
-	 * @param modifs 
+	 * @param index
+	 * @param modifs
 	 */
-	public SimpleNode(Class<K> keyType, Class<V> valueType, AbstractIndex<?, ?, ?> index, CacheModifications modifs) {
+	public SimpleNode(final Class<K> keyType, final Class<V> valueType, final AbstractIndex<?, ?, ?> index,
+			final CacheModifications modifs) {
 		super(keyType, valueType, index, modifs);
 	}
 
 	/**
+	 * file
+	 * 
+	 * @param position
+	 * @param indexAbstrait
+	 * @param keyType
+	 * @param valueType
+	 */
+	public SimpleNode(final long position, final AbstractIndex<?, ?, ?> indexAbstrait, final Class<K> keyType,
+			final Class<V> valueType) {
+		super(position, indexAbstrait, keyType, valueType);
+	}
+
+	/**
 	 * runtime
+	 * 
 	 * @param clef
 	 * @param valuePosition
 	 * @param index
@@ -29,32 +43,23 @@ public class SimpleNode<K extends Comparable<K>, V> extends Node1D<K, V>{
 	 * @param keyType
 	 * @param valueType
 	 * @throws StorageException
-	 * @throws SerializationException 
+	 * @throws SerializationException
 	 */
-	public SimpleNode(long keyPosition, Long valuePosition, AbstractIndex<?, ?, ?> index, Class<K> keyType, Class<V> valueType, CacheModifications modifs) throws StorageException, SerializationException {
+	public SimpleNode(final long keyPosition, final Long valuePosition, final AbstractIndex<?, ?, ?> index,
+			final Class<K> keyType, final Class<V> valueType, final CacheModifications modifs)
+			throws StorageException, SerializationException {
 		super(keyPosition, valuePosition, index, keyType, valueType, modifs);
 	}
 
-	/**
-	 * file
-	 * @param position
-	 * @param indexAbstrait
-	 * @param keyType
-	 * @param valueType
-	 */
-	public SimpleNode(long position, AbstractIndex<?, ?, ?> indexAbstrait, Class<K> keyType, Class<V> valueType){
-		super(position, indexAbstrait, keyType, valueType);
-	}
-
 	@Override
-	protected Node1D<K, V> newNode(long keyPosition, Long valuePosition, AbstractIndex<?, ?, ?> index, CacheModifications modifs) throws IOException, StorageException, SerializationException {
-		return new SimpleNode<>(keyPosition, valuePosition, index, keyType, valueType, modifs);
-	}
-
-	@Override
-	protected void keysAreEquals(Long valuePosition, CacheModifications modifs) {
+	protected void keysAreEquals(final Long valuePosition, final CacheModifications modifs) {
 		setValuePosition(valuePosition, modifs);
 	}
-	
+
+	@Override
+	protected Node1D<K, V> newNode(final long keyPosition, final Long valuePosition, final AbstractIndex<?, ?, ?> index,
+			final CacheModifications modifs) throws IOException, StorageException, SerializationException {
+		return new SimpleNode<>(keyPosition, valuePosition, index, keyType, valueType, modifs);
+	}
 
 }

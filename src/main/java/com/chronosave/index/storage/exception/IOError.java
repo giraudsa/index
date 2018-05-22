@@ -3,7 +3,7 @@ package com.chronosave.index.storage.exception;
 public class IOError extends RuntimeException {
 
 	/**
-	 * 
+	 *
 	 */
 	private static final long serialVersionUID = 5804973090631367613L;
 
@@ -11,22 +11,21 @@ public class IOError extends RuntimeException {
 		super();
 	}
 
-	public IOError(String message, Throwable cause, boolean enableSuppression, boolean writableStackTrace) {
-		super(message, cause, enableSuppression, writableStackTrace);
-	}
-
-	public IOError(String message, Throwable cause) {
-		super(message, cause);
-	}
-
-	public IOError(String message) {
+	public IOError(final String message) {
 		super(message);
 	}
 
-	public IOError(Throwable cause) {
+	public IOError(final String message, final Throwable cause) {
+		super(message, cause);
+	}
+
+	public IOError(final String message, final Throwable cause, final boolean enableSuppression,
+			final boolean writableStackTrace) {
+		super(message, cause, enableSuppression, writableStackTrace);
+	}
+
+	public IOError(final Throwable cause) {
 		super(cause);
 	}
 
-	
-	
 }

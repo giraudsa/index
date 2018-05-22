@@ -9,24 +9,20 @@ import com.chronosave.index.externe.IdManager;
 import com.chronosave.index.storage.condition.ComputeKey;
 import com.chronosave.index.storage.exception.StorageException;
 
-public class MemoryIndexAVL<K extends Comparable<K>,U> extends MemoryIndex<K, U>{
+public class MemoryIndexAVL<K extends Comparable<K>, U> extends MemoryIndex<K, U> {
 
-	protected MemoryIndexAVL(Class<U> objectType, ComputeKey<K, U> delegate, IdManager idManager, AllObjectByType allObjectByType) throws StorageException {
+	protected MemoryIndexAVL(final Class<U> objectType, final ComputeKey<K, U> delegate, final IdManager idManager,
+			final AllObjectByType allObjectByType) throws StorageException {
 		super(objectType, delegate, idManager, allObjectByType);
 	}
 
-	@Override
-	protected MemoryNode<K, Set<U>> newMemoryNoeud(K clef) {
-		return new MemoryNodeAVL<>(clef, new LinkedHashSet<U>());
-	}
-
-	public Collection<U> getBetween(K min, K max) {
-		final Collection<U> ret = new LinkedHashSet<>(); 
+	public Collection<U> getBetween(final K min, final K max) {
+		final Collection<U> ret = new LinkedHashSet<>();
 		if (getIndexe() == null)
 			return ret;
-		Visitor<MemoryNodeAVL<K,U>> visiteur = new Visitor<MemoryNodeAVL<K,U>>() {
+		final Visitor<MemoryNodeAVL<K, U>> visiteur = new Visitor<MemoryNodeAVL<K, U>>() {
 			@Override
-			protected void visite(MemoryNodeAVL<K, U> noeud) {
+			protected void visite(final MemoryNodeAVL<K, U> noeud) {
 				ret.addAll(noeud.value);
 			}
 		};
@@ -34,7 +30,12 @@ public class MemoryIndexAVL<K extends Comparable<K>,U> extends MemoryIndex<K, U>
 		return ret;
 	}
 
-	private MemoryNodeAVL<K,U> getIndexe() {
-		return (MemoryNodeAVL<K,U>)index;
+	private MemoryNodeAVL<K, U> getIndexe() {
+		return (MemoryNodeAVL<K, U>) index;
+	}
+
+	@Override
+	protected MemoryNode<K, Set<U>> newMemoryNoeud(final K clef) {
+		return new MemoryNodeAVL<>(clef, new LinkedHashSet<U>());
 	}
 }

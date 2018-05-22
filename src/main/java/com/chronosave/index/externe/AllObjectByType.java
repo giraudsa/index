@@ -6,6 +6,7 @@ public interface AllObjectByType {
 
 	/**
 	 * give all instance of a given type
+	 * 
 	 * @param objectType
 	 * @return
 	 */

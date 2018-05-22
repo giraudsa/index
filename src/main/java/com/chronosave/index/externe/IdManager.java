@@ -5,6 +5,7 @@ import com.chronosave.index.storage.exception.StorageException;
 public interface IdManager {
 	/**
 	 * give a unique ID for every objects
+	 * 
 	 * @param object
 	 * @return
 	 * @throws StorageException

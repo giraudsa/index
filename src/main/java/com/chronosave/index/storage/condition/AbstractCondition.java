@@ -12,12 +12,11 @@ public abstract class AbstractCondition<K, U> {
 	private final ComputeKey<K, U> delegate;
 	private final Class<U> typeObjet;
 	private final Class<K> typeReturn;
-	public abstract CloseableIterator<String> run(AbstractIndex<U,?,?> index, ReadWriteLock locker) throws StoreException, InterruptedException;
-	public abstract <V> Collection<U> runMemory(MemoryIndex<?, V> memoryIndex, ReadWriteLock locker) throws InterruptedException;
+
 	/**
 	 * @param delegate
 	 */
-	protected AbstractCondition(Class<U> typeObjet, Class<K> typeReturn, ComputeKey<K, U> delegate) {
+	protected AbstractCondition(final Class<U> typeObjet, final Class<K> typeReturn, final ComputeKey<K, U> delegate) {
 		super();
 		this.delegate = delegate;
 		this.typeObjet = typeObjet;
@@ -35,4 +34,10 @@ public abstract class AbstractCondition<K, U> {
 	public Class<K> getTypeReturn() {
 		return typeReturn;
 	}
+
+	public abstract CloseableIterator<String> run(AbstractIndex<U, ?, ?> index, ReadWriteLock locker)
+			throws StoreException, InterruptedException;
+
+	public abstract <V> Collection<U> runMemory(MemoryIndex<?, V> memoryIndex, ReadWriteLock locker)
+			throws InterruptedException;
 }

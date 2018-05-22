@@ -7,172 +7,125 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 
-import com.chronosave.index.storage.exception.StorageException;
-import com.chronosave.index.storage.exception.StorageRuntimeException;
 import com.chronosave.index.storage.exception.IOError;
 import com.chronosave.index.storage.exception.SerializationException;
+import com.chronosave.index.storage.exception.StorageException;
+import com.chronosave.index.storage.exception.StorageRuntimeException;
 
 /**
- * un noeudXY ecrit sur disque donne
- * positionClef -> long
- * positionValeur -> long
- * x -> double
- * y -> double
- * w -> double
- * h -> double
- * positionNoeudParent -> long
- * typeNoeud -> byte
- * positionNW -> long
- * positionNE -> long
- * positionSW -> long
+ * un noeudXY ecrit sur disque donne positionClef -> long positionValeur -> long
+ * x -> double y -> double w -> double h -> double positionNoeudParent -> long
+ * typeNoeud -> byte positionNW -> long positionNE -> long positionSW -> long
  * positionSE -> long
  */
-public class XYNode<K extends List<Double>> extends AbstractNode<K, SingletonNode<String>>{
+public class XYNode<K extends List<Double>> extends AbstractNode<K, SingletonNode<String>> {
 
-	private static final byte EMPTY= 0;
+	protected class BoxIterator implements Iterator<SingletonNode<String>> {
+		private Iterator<SingletonNode<String>> currentUnderIterator;
+		private boolean dejaVu = false;
+		private SingletonNode<String> next;
+		private final Deque<XYNode<K>> toScout = new ArrayDeque<>();
+		private final double xmax;
+		private final double xmin;
+		private final double ymax;
+		private final double ymin;
+
+		protected BoxIterator(final double xmin, final double ymin, final double xmax, final double ymax)
+				throws IOException, StorageException, SerializationException {
+			this.next = null;
+			this.xmin = xmin;
+			this.ymin = ymin;
+			this.xmax = xmax;
+			this.ymax = ymax;
+			if (getNodeType(null) == POINTER) {
+				if (getNE(null).intersects(xmin, ymin, xmax, ymax, null))
+					toScout.push(getNE(null));
+				if (getNW(null).intersects(xmin, ymin, xmax, ymax, null))
+					toScout.push(getNW(null));
+				if (getSE(null).intersects(xmin, ymin, xmax, ymax, null))
+					toScout.push(getSE(null));
+				if (getSW(null).intersects(xmin, ymin, xmax, ymax, null))
+					toScout.push(getSW(null));
+			}
+			cacheNext();
+		}
+
+		private void cacheNext() throws IOException, StorageException, SerializationException {
+			if (getNodeType(null) == EMPTY)
+				next = null;
+			else if (getNodeType(null) == LEAF)
+				cacheNextNodeLeaf();
+			else if (getNodeType(null) == POINTER)
+				cacheNextPointer();
+		}
+
+		private void cacheNextNodeLeaf() throws StorageException, IOException, SerializationException {
+			if (!dejaVu) {
+				next = isPositionInBox(xmin, ymin, xmax, ymax, null) ? getValue(null) : null;
+				dejaVu = true;
+			} else
+				next = null;
+		}
+
+		private void cacheNextPointer() throws IOException, StorageException, SerializationException {
+			while (next == null && stillNodeToScout()) {
+				if (currentUnderIterator == null)
+					currentUnderIterator = toScout.pop().inTheBox(xmin, ymin, xmax, ymax);
+				if (currentUnderIterator.hasNext())
+					next = currentUnderIterator.next();
+				else
+					currentUnderIterator = null;
+			}
+		}
+
+		@Override
+		public boolean hasNext() {
+			return next != null;
+		}
+
+		private boolean isPositionInBox(final double left, final double bottom, final double right, final double top,
+				final CacheModifications modifs) throws StorageException, IOException, SerializationException {
+			if (getNodeType(modifs) != LEAF)
+				throw new StorageException("this method must not be called since we are in a Leaf !");
+			final List<Double> xy = getKey(modifs);
+			final double x = xy.get(0);
+			final double y = xy.get(1);
+			return x >= left && x <= right && y >= bottom && y <= top;
+		}
+
+		@Override
+		public SingletonNode<String> next() {
+			if (!hasNext())
+				throw new NoSuchElementException();
+			try {
+				final SingletonNode<String> ret = next;
+				cacheNext();
+				return ret;
+			} catch (final IOException e) {
+				throw new IOError(e);
+			} catch (StorageException | SerializationException e) {
+				throw new StorageRuntimeException(e);
+			}
+		}
+
+		@Override
+		public void remove() {
+			throw new UnsupportedOperationException();
+		}
+
+		private boolean stillNodeToScout() {
+			return !toScout.isEmpty() || currentUnderIterator != null;
+		}
+	}
+
+	private static final byte EMPTY = 0;
 	private static final byte LEAF = 1;
-	private static final byte POINTER = 2;
 	private static final long NULL = -1L;
-	//fixe
-	private long xPosition() {return valuePositionPosition() + Long.SIZE / 8;}
-	private long yPosition() {return xPosition() + Double.SIZE / 8;}
-	private long wPosition() {return yPosition() + Double.SIZE / 8;}
-	private long hPosition() {return wPosition() + Double.SIZE / 8;}
-	private long optParentPositionPosition() {return hPosition() + Double.SIZE / 8;}
-	private long noeudTypePosition() {return optParentPositionPosition() + Long.SIZE / 8;}
-	private long nwPositionPosition() {return noeudTypePosition() + Byte.SIZE / 8;}
-	private long nePositionPosition() {return nwPositionPosition() + Long.SIZE / 8;}
-	private long swPositionPosition() {return nePositionPosition() + Long.SIZE / 8;}
-	private long sePositionPosition() {return swPositionPosition() + Long.SIZE / 8;}
-	//variable
-	private long optParentPosition(CacheModifications modifs) throws IOException, StorageException, SerializationException {
-		return index.getStuff(optParentPositionPosition(), Long.class, modifs);
-	}
-	@Override long keyPosition(CacheModifications modifs) throws IOException, StorageException, SerializationException {
-		return index.getStuff(keyPositionPosition(), Long.class, modifs);
-	}
-	@Override long valuePosition(CacheModifications modifs) throws IOException, StorageException, SerializationException {
-		return index.getStuff(valuePositionPosition(), Long.class, modifs);
-	}
-	private long nwPosition(CacheModifications modifs) throws IOException, StorageException, SerializationException {
-		return index.getStuff(nwPositionPosition(), Long.class, modifs);
-	}
-	private long nePosition(CacheModifications modifs) throws IOException, StorageException, SerializationException {
-		return index.getStuff(nePositionPosition(), Long.class, modifs);
-	}
-	private long swPosition(CacheModifications modifs) throws IOException, StorageException, SerializationException {
-		return index.getStuff(sePositionPosition(), Long.class, modifs);
-	}
-	private long sePosition(CacheModifications modifs) throws IOException, StorageException, SerializationException {
-		return index.getStuff(sePositionPosition(), Long.class, modifs);
-	}
-	private void setKeyPosition(long keyPosition, CacheModifications modifs) {
-		modifs.add(keyPositionPosition(), keyPosition);
-	}
-	private void setValuePosition(Long valuePosition, CacheModifications modifs) {
-		modifs.add(valuePositionPosition(), valuePosition);
-	}
-	private void setSEPosition(long position, CacheModifications modifs) throws IOException, StorageException, SerializationException {
-		modifs.add(sePosition(modifs), position);
-	}
-	private void setSWPosition(long position, CacheModifications modifs) throws IOException, StorageException, SerializationException {
-		modifs.add(swPosition(modifs), position);
-	}
-	private void setNEPosition(long position, CacheModifications modifs) throws IOException, StorageException, SerializationException {
-		modifs.add(nePosition(modifs), position);
-	}
-	private void setNWPosition(long position, CacheModifications modifs) throws IOException, StorageException, SerializationException {
-		modifs.add(nwPosition(modifs), position);
-	}
-	private Double getX(CacheModifications modifs) throws IOException, StorageException, SerializationException {
-		return index.getStuff(xPosition(), Double.class, modifs);
-	}
-	private Double getY(CacheModifications modifs) throws IOException, StorageException, SerializationException {
-		return index.getStuff(yPosition(), Double.class, modifs);
-	}
-	private Double getW(CacheModifications modifs) throws IOException, StorageException, SerializationException {
-		return index.getStuff(wPosition(), Double.class, modifs);
-	}
-	private Double getH(CacheModifications modifs) throws IOException, StorageException, SerializationException {
-		return index.getStuff(hPosition(), Double.class, modifs);
-	}
-	@SuppressWarnings("unchecked")
-	private XYNode<K> getOptParent(CacheModifications modifs) throws IOException, StorageException, SerializationException{
-		return index.getStuff(optParentPosition(modifs), XYNode.class, modifs);
-	}
-	private byte getNodeType(CacheModifications modifs) throws IOException, StorageException, SerializationException {
-		return index.getStuff(noeudTypePosition(), Byte.class, modifs);
-	}
-	@SuppressWarnings("unchecked")
-	private XYNode<K> getNW(CacheModifications modifs) throws IOException, StorageException, SerializationException{
-		return index.getStuff(nwPosition(modifs), XYNode.class, modifs);
-	}
-	@SuppressWarnings("unchecked")
-	private XYNode<K> getNE(CacheModifications modifs) throws IOException, StorageException, SerializationException{
-		return index.getStuff(nePosition(modifs), XYNode.class, modifs);
-	}
-	@SuppressWarnings("unchecked")
-	private XYNode<K> getSW(CacheModifications modifs) throws IOException, StorageException, SerializationException{
-		return index.getStuff(swPosition(modifs), XYNode.class, modifs);
-	}
-	@SuppressWarnings("unchecked")
-	private XYNode<K> getSE(CacheModifications modifs) throws IOException, StorageException, SerializationException {
-		return index.getStuff(sePosition(modifs), XYNode.class, modifs);
-	}
-	private void setOptParent(XYNode<K> daddy, CacheModifications modifs) {
-		setOptParentPosition(daddy.getPosition(), modifs);
-	}
-	private void setOptParentPosition(long optParentPosition, CacheModifications modifs) {
-		modifs.add(optParentPositionPosition(), optParentPosition);
-	}
-	private void setNodeType(Byte nodeType, CacheModifications modifs) {
-		modifs.add(noeudTypePosition(), nodeType);
-	}
-	private void setSe(XYNode<K> node, CacheModifications modifs) throws IOException, StorageException, SerializationException {
-		setSEPosition(node.getPosition(), modifs);
-	}
-	private void setSw(XYNode<K> node, CacheModifications modifs) throws IOException, StorageException, SerializationException {
-		setSWPosition(node.getPosition(), modifs);
-	}
-	private void setNe(XYNode<K> node, CacheModifications modifs) throws IOException, StorageException, SerializationException {
-		setNEPosition(node.getPosition(), modifs);
-	}
-	private void setNw(XYNode<K> node, CacheModifications modifs) throws IOException, StorageException, SerializationException {
-		setNWPosition(node.getPosition(), modifs);
-	}
-	/**
-	 * file
-	 * @param position
-	 * @param index
-	 * @param keyType
-	 * @param valueType
-	 * @param lireValeur
-	 * @throws IOException
-	 * @throws StorageException
-	 * @throws SerializationException
-	 */
-	protected XYNode(long position, AbstractIndex<?,?,?> index, Class<K> keyType, Class<SingletonNode<String>> valueType) {
-		super(keyType, valueType, index, position);
-	}
-
+	private static final byte POINTER = 2;
 
 	/**
-	 * runtime
-	 * @param index
-	 * @param x
-	 * @param y
-	 * @param hw
-	 * @param hh
-	 * @param daddy
-	 * @param modifs
-	 * @throws SerializationException
-	 */
-	protected XYNode(AbstractIndex<?, ?, ?> index, double x, double y, double hw, double hh, XYNode<K> daddy, CacheModifications modifs) throws SerializationException {
-		super(daddy.keyType, daddy.valueType, index, index.getEndOfFile());
-		init(x, y, hw, hh, daddy, modifs);
-	}
-	/**
-	 *  root creation
+	 * root creation
+	 * 
 	 * @param index
 	 * @param clefTYpe
 	 * @param x
@@ -183,94 +136,298 @@ public class XYNode<K extends List<Double>> extends AbstractNode<K, SingletonNod
 	 * @throws SerializationException
 	 */
 	@SuppressWarnings("unchecked")
-	protected XYNode(AbstractIndex<?, ?, ?> index, Class<K> keyType, double x, double y, double hw, double hh, CacheModifications modifs) throws SerializationException {
-		super(keyType, (Class<SingletonNode<String>>)(Object)SingletonNode.class, index, index.getEndOfFile());
+	protected XYNode(final AbstractIndex<?, ?, ?> index, final Class<K> keyType, final double x, final double y,
+			final double hw, final double hh, final CacheModifications modifs) throws SerializationException {
+		super(keyType, (Class<SingletonNode<String>>) (Object) SingletonNode.class, index, index.getEndOfFile());
 		init(x, y, hw, hh, null, modifs);
 	}
-	private void init(double x, double y, double hw, double hh, XYNode<K> daddy, CacheModifications modifs) throws SerializationException {
-		super.init(NULL, NULL, modifs);
-		index.writeFakeAndCache(x, modifs);
-		index.writeFakeAndCache(y, modifs);
-		index.writeFakeAndCache(hw, modifs);
-		index.writeFakeAndCache(hh, modifs);
-		index.writeFakeAndCache(daddy == null ? NULL : daddy.getPosition() , modifs);//dad node
-		index.writeFakeAndCache(EMPTY, modifs);//node type
-		index.writeFakeAndCache(NULL, modifs);//NW
-		index.writeFakeAndCache(NULL, modifs);//NE
-		index.writeFakeAndCache(NULL, modifs);//SW
-		index.writeFakeAndCache(NULL, modifs);//SE
+
+	/**
+	 * runtime
+	 * 
+	 * @param index
+	 * @param x
+	 * @param y
+	 * @param hw
+	 * @param hh
+	 * @param daddy
+	 * @param modifs
+	 * @throws SerializationException
+	 */
+	protected XYNode(final AbstractIndex<?, ?, ?> index, final double x, final double y, final double hw,
+			final double hh, final XYNode<K> daddy, final CacheModifications modifs) throws SerializationException {
+		super(daddy.keyType, daddy.valueType, index, index.getEndOfFile());
+		init(x, y, hw, hh, daddy, modifs);
 	}
 
-	private boolean isRoot(CacheModifications modifs) throws IOException, StorageException, SerializationException {
-		return getOptParent(modifs) == null;
+	/**
+	 * file
+	 * 
+	 * @param position
+	 * @param index
+	 * @param keyType
+	 * @param valueType
+	 * @param lireValeur
+	 * @throws IOException
+	 * @throws StorageException
+	 * @throws SerializationException
+	 */
+	protected XYNode(final long position, final AbstractIndex<?, ?, ?> index, final Class<K> keyType,
+			final Class<SingletonNode<String>> valueType) {
+		super(keyType, valueType, index, position);
 	}
 
 	@Override
-	AbstractNode<K, SingletonNode<String>> addAndBalance(K key, long keyPosition, Long valuePosition, CacheModifications modifs) throws IOException, StorageException, SerializationException {
-		if(isRoot(modifs) && !contains(key, modifs)) {
-			XYNode<K> root = newXYRootNode(key, modifs);
+	AbstractNode<K, SingletonNode<String>> addAndBalance(final K key, final long keyPosition, final Long valuePosition,
+			final CacheModifications modifs) throws IOException, StorageException, SerializationException {
+		if (isRoot(modifs) && !contains(key, modifs)) {
+			final XYNode<K> root = newXYRootNode(key, modifs);
 			return root.addAndBalance(key, keyPosition, valuePosition, modifs);
 		}
 
-		byte nodeType = getNodeType(modifs);
+		final byte nodeType = getNodeType(modifs);
 		if (nodeType == EMPTY) {
 			setKeyPosition(keyPosition, modifs);
 			setValuePosition(valuePosition, modifs);
 			setNodeType(LEAF, modifs);
 		} else if (nodeType == LEAF) {
-			K k = getKey(modifs);
-			if (k.get(0).equals(key.get(0)) && k.get(1).equals(key.get(1))) {
-				throw new StorageException("bug : not possible to insert an object of same key on an NodeXY"); //il ne peut pas y avoir insertion d'un objet de meme clef sur un NoeudXY
-			} else {
+			final K k = getKey(modifs);
+			if (k.get(0).equals(key.get(0)) && k.get(1).equals(key.get(1)))
+				throw new StorageException("bug : not possible to insert an object of same key on an NodeXY"); // il ne
+																												// peut
+																												// pas y
+																												// avoir
+																												// insertion
+																												// d'un
+																												// objet
+																												// de
+																												// meme
+																												// clef
+																												// sur
+																												// un
+																												// NoeudXY
+			else {
 				split(modifs);
 				addAndBalance(key, keyPosition, valuePosition, modifs);
 			}
-		} else if (nodeType == POINTER) {
+		} else if (nodeType == POINTER)
 			getQuandrantForPoint(key, modifs).addAndBalance(key, keyPosition, valuePosition, modifs);
-		} else {
+		else
 			throw new StorageException("Invalid nodeType in parent");
-		}
 		return this;
 	}
 
-	private XYNode<K> newXYRootNode(K key, CacheModifications modifs) throws SerializationException, IOException, StorageException {
-		double x0 = key.get(0);
-		double y0 = key.get(1);
-		double x = (x0 < getX(modifs)) ? getX(modifs) - getW(modifs) : getX(modifs);
-		double y = (y0 < getY(modifs)) ? getY(modifs) - getH(modifs) : getY(modifs);
-		double hw = 2 * getW(modifs);
-		double hh = 2 * getH(modifs);
-		boolean east = (x < getX(modifs)) ? true : false;
-		boolean west = !east;
-		boolean north = (y < getY(modifs)) ? true : false;
-		boolean south = !north;
-		XYNode<K> root = new XYNode<>(index, keyType, x, y, hw, hh, modifs);
+	private boolean contains(final K key, final CacheModifications modifs)
+			throws IOException, StorageException, SerializationException {
+		return intersects(key.get(0), key.get(1), key.get(0), key.get(1), modifs);
+	}
+
+	@Override
+	AbstractNode<K, SingletonNode<String>> deleteAndBalance(final K clef, final CacheModifications modifs)
+			throws IOException, StorageException, SerializationException {
+		// useless
+		return null;
+	}
+
+	protected boolean deleteId(final String id, final CacheModifications modifs)
+			throws IOException, StorageException, SerializationException {
+		if (getValue(modifs) == null)
+			return true;
+		boolean isEmpty = false;
+		final AbstractNode<String, String> newNode = getValue(modifs).deleteAndBalance(id, modifs);
+		if (newNode == null)
+			isEmpty = true;
+		else
+			setValuePosition(newNode.valuePosition(modifs), modifs);
+		return isEmpty;
+	}
+
+	@Override
+	AbstractNode<K, SingletonNode<String>> findNode(final K key, final CacheModifications modifs)
+			throws IOException, StorageException, SerializationException {
+		AbstractNode<K, SingletonNode<String>> ret = null;
+		final byte nodeType = getNodeType(modifs);
+		if (nodeType == LEAF) {
+			final Double x = key.get(0);
+			final Double y = key.get(1);
+			ret = getKey(modifs).get(0) == x && getKey(modifs).get(1) == y ? this : null;
+		} else if (nodeType == POINTER)
+			ret = getQuandrantForPoint(key, modifs).findNode(key, modifs);
+		else if (nodeType != EMPTY)
+			throw new StorageException("Invalid nodeType");
+		return ret;
+	}
+
+	private Double getH(final CacheModifications modifs) throws IOException, StorageException, SerializationException {
+		return index.getStuff(hPosition(), Double.class, modifs);
+	}
+
+	@SuppressWarnings("unchecked")
+	private XYNode<K> getNE(final CacheModifications modifs)
+			throws IOException, StorageException, SerializationException {
+		return index.getStuff(nePosition(modifs), XYNode.class, modifs);
+	}
+
+	private byte getNodeType(final CacheModifications modifs)
+			throws IOException, StorageException, SerializationException {
+		return index.getStuff(noeudTypePosition(), Byte.class, modifs);
+	}
+
+	@SuppressWarnings("unchecked")
+	private XYNode<K> getNW(final CacheModifications modifs)
+			throws IOException, StorageException, SerializationException {
+		return index.getStuff(nwPosition(modifs), XYNode.class, modifs);
+	}
+
+	@SuppressWarnings("unchecked")
+	private XYNode<K> getOptParent(final CacheModifications modifs)
+			throws IOException, StorageException, SerializationException {
+		return index.getStuff(optParentPosition(modifs), XYNode.class, modifs);
+	}
+
+	private AbstractNode<K, SingletonNode<String>> getQuandrantForPoint(final K key, final CacheModifications modifs)
+			throws IOException, StorageException, SerializationException {
+		final double mx = getX(modifs) + getW(modifs) / 2;
+		final double my = getY(modifs) + getH(modifs) / 2;
+		if (key.get(0) < mx)
+			return key.get(1) < my ? getNW(modifs) : getSW(modifs);
+		return key.get(1) < my ? getNE(modifs) : getSE(modifs);
+	}
+
+	@SuppressWarnings("unchecked")
+	private XYNode<K> getSE(final CacheModifications modifs)
+			throws IOException, StorageException, SerializationException {
+		return index.getStuff(sePosition(modifs), XYNode.class, modifs);
+	}
+
+	@SuppressWarnings("unchecked")
+	private XYNode<K> getSW(final CacheModifications modifs)
+			throws IOException, StorageException, SerializationException {
+		return index.getStuff(swPosition(modifs), XYNode.class, modifs);
+	}
+
+	private Double getW(final CacheModifications modifs) throws IOException, StorageException, SerializationException {
+		return index.getStuff(wPosition(), Double.class, modifs);
+	}
+
+	private Double getX(final CacheModifications modifs) throws IOException, StorageException, SerializationException {
+		return index.getStuff(xPosition(), Double.class, modifs);
+	}
+
+	private Double getY(final CacheModifications modifs) throws IOException, StorageException, SerializationException {
+		return index.getStuff(yPosition(), Double.class, modifs);
+	}
+
+	private long hPosition() {
+		return wPosition() + Double.SIZE / 8;
+	}
+
+	private void init(final double x, final double y, final double hw, final double hh, final XYNode<K> daddy,
+			final CacheModifications modifs) throws SerializationException {
+		super.init(NULL, NULL, modifs);
+		index.writeFakeAndCache(x, modifs);
+		index.writeFakeAndCache(y, modifs);
+		index.writeFakeAndCache(hw, modifs);
+		index.writeFakeAndCache(hh, modifs);
+		index.writeFakeAndCache(daddy == null ? NULL : daddy.getPosition(), modifs);// dad node
+		index.writeFakeAndCache(EMPTY, modifs);// node type
+		index.writeFakeAndCache(NULL, modifs);// NW
+		index.writeFakeAndCache(NULL, modifs);// NE
+		index.writeFakeAndCache(NULL, modifs);// SW
+		index.writeFakeAndCache(NULL, modifs);// SE
+	}
+
+	protected void insertValue(final String id, final long positionId, final CacheModifications modifs)
+			throws IOException, StorageException, SerializationException {
+		AbstractNode<String, String> root = getValue(modifs);
+		if (root == null)
+			root = new SingletonNode<>(positionId, index, String.class, modifs);
+		else
+			root = root.addAndBalance(id, positionId, null, modifs);
+		setValuePosition(root.getPosition(), modifs);
+	}
+
+	private boolean intersects(final double left, final double bottom, final double right, final double top,
+			final CacheModifications modifs) throws IOException, StorageException, SerializationException {
+		return !(getX(modifs) > right || getX(modifs) + getW(modifs) < left || getY(modifs) > bottom
+				|| getY(modifs) + getH(modifs) < top);
+	}
+
+	protected Iterator<SingletonNode<String>> inTheBox(final double xmin, final double ymin, final double xmax,
+			final double ymax) throws IOException, StorageException, SerializationException {
+		return new BoxIterator(xmin, ymin, xmax, ymax);
+	}
+
+	private boolean isRoot(final CacheModifications modifs)
+			throws IOException, StorageException, SerializationException {
+		return getOptParent(modifs) == null;
+	}
+
+	@Override
+	long keyPosition(final CacheModifications modifs) throws IOException, StorageException, SerializationException {
+		return index.getStuff(keyPositionPosition(), Long.class, modifs);
+	}
+
+	private long nePosition(final CacheModifications modifs)
+			throws IOException, StorageException, SerializationException {
+		return index.getStuff(nePositionPosition(), Long.class, modifs);
+	}
+
+	private long nePositionPosition() {
+		return nwPositionPosition() + Long.SIZE / 8;
+	}
+
+	private XYNode<K> newXYRootNode(final K key, final CacheModifications modifs)
+			throws SerializationException, IOException, StorageException {
+		final double x0 = key.get(0);
+		final double y0 = key.get(1);
+		final double x = x0 < getX(modifs) ? getX(modifs) - getW(modifs) : getX(modifs);
+		final double y = y0 < getY(modifs) ? getY(modifs) - getH(modifs) : getY(modifs);
+		final double hw = 2 * getW(modifs);
+		final double hh = 2 * getH(modifs);
+		final boolean east = x < getX(modifs) ? true : false;
+		final boolean west = !east;
+		final boolean north = y < getY(modifs) ? true : false;
+		final boolean south = !north;
+		final XYNode<K> root = new XYNode<>(index, keyType, x, y, hw, hh, modifs);
 		this.setOptParent(root, modifs);
 		root.setNodeType(POINTER, modifs);
 		XYNode<K> nw;
 		XYNode<K> ne;
 		XYNode<K> sw;
 		XYNode<K> se;
-		if(north && east) {
+		if (north && east) {
 			ne = this;
-			nw = new XYNode<>(index, getX(modifs) - getW(modifs), getY(modifs), getW(modifs), getH(modifs), root, modifs);
-			sw = new XYNode<>(index, getX(modifs) - getW(modifs), getY(modifs) - getH(modifs), getW(modifs), getH(modifs), root, modifs);
-			se = new XYNode<>(index, getX(modifs), getY(modifs) - getH(modifs), getW(modifs), getH(modifs), root, modifs);
-		}else if(north && west){ 
-			ne = new XYNode<>(index, getX(modifs) + getW(modifs), getY(modifs), getW(modifs), getH(modifs), root, modifs);
+			nw = new XYNode<>(index, getX(modifs) - getW(modifs), getY(modifs), getW(modifs), getH(modifs), root,
+					modifs);
+			sw = new XYNode<>(index, getX(modifs) - getW(modifs), getY(modifs) - getH(modifs), getW(modifs),
+					getH(modifs), root, modifs);
+			se = new XYNode<>(index, getX(modifs), getY(modifs) - getH(modifs), getW(modifs), getH(modifs), root,
+					modifs);
+		} else if (north && west) {
+			ne = new XYNode<>(index, getX(modifs) + getW(modifs), getY(modifs), getW(modifs), getH(modifs), root,
+					modifs);
 			nw = this;
-			sw = new XYNode<>(index, getX(modifs), getY(modifs) - getH(modifs), getW(modifs), getH(modifs), root, modifs);
-			se = new XYNode<>(index, getX(modifs) + getW(modifs), getY(modifs) - getH(modifs), getW(modifs), getH(modifs), root, modifs);
-		}else if(south && east) { 
-			ne = new XYNode<>(index, getX(modifs), getY(modifs) + getH(modifs), getW(modifs), getH(modifs), root, modifs);
-			nw = new XYNode<>(index, getX(modifs) - getW(modifs), getY(modifs) + getH(modifs), getW(modifs), getH(modifs), root, modifs);
-			sw = new XYNode<>(index, getX(modifs) - getW(modifs), getY(modifs), getW(modifs), getH(modifs), root, modifs);
+			sw = new XYNode<>(index, getX(modifs), getY(modifs) - getH(modifs), getW(modifs), getH(modifs), root,
+					modifs);
+			se = new XYNode<>(index, getX(modifs) + getW(modifs), getY(modifs) - getH(modifs), getW(modifs),
+					getH(modifs), root, modifs);
+		} else if (south && east) {
+			ne = new XYNode<>(index, getX(modifs), getY(modifs) + getH(modifs), getW(modifs), getH(modifs), root,
+					modifs);
+			nw = new XYNode<>(index, getX(modifs) - getW(modifs), getY(modifs) + getH(modifs), getW(modifs),
+					getH(modifs), root, modifs);
+			sw = new XYNode<>(index, getX(modifs) - getW(modifs), getY(modifs), getW(modifs), getH(modifs), root,
+					modifs);
 			se = this;
-		}else{//SW
-			ne = new XYNode<>(index, getX(modifs) + getH(modifs), getY(modifs) + getH(modifs), getW(modifs), getH(modifs), root, modifs);
-			nw = new XYNode<>(index, getX(modifs), getY(modifs) + getH(modifs), getW(modifs), getH(modifs), root, modifs);
+		} else {// SW
+			ne = new XYNode<>(index, getX(modifs) + getH(modifs), getY(modifs) + getH(modifs), getW(modifs),
+					getH(modifs), root, modifs);
+			nw = new XYNode<>(index, getX(modifs), getY(modifs) + getH(modifs), getW(modifs), getH(modifs), root,
+					modifs);
 			sw = this;
-			se = new XYNode<>(index, getX(modifs) + getH(modifs), getY(modifs), getW(modifs), getH(modifs), root, modifs);
+			se = new XYNode<>(index, getX(modifs) + getH(modifs), getY(modifs), getW(modifs), getH(modifs), root,
+					modifs);
 		}
 
 		root.setNe(ne, modifs);
@@ -279,11 +436,104 @@ public class XYNode<K extends List<Double>> extends AbstractNode<K, SingletonNod
 		root.setSw(sw, modifs);
 		return root;
 	}
-	private void split(CacheModifications modifs) throws IOException, StorageException, SerializationException {
-		double x = getX(modifs);
-		double y = getY(modifs);
-		double hw = getW(modifs) / 2;
-		double hh = getH(modifs) / 2;
+
+	private long noeudTypePosition() {
+		return optParentPositionPosition() + Long.SIZE / 8;
+	}
+
+	private long nwPosition(final CacheModifications modifs)
+			throws IOException, StorageException, SerializationException {
+		return index.getStuff(nwPositionPosition(), Long.class, modifs);
+	}
+
+	private long nwPositionPosition() {
+		return noeudTypePosition() + Byte.SIZE / 8;
+	}
+
+	// variable
+	private long optParentPosition(final CacheModifications modifs)
+			throws IOException, StorageException, SerializationException {
+		return index.getStuff(optParentPositionPosition(), Long.class, modifs);
+	}
+
+	private long optParentPositionPosition() {
+		return hPosition() + Double.SIZE / 8;
+	}
+
+	private long sePosition(final CacheModifications modifs)
+			throws IOException, StorageException, SerializationException {
+		return index.getStuff(sePositionPosition(), Long.class, modifs);
+	}
+
+	private long sePositionPosition() {
+		return swPositionPosition() + Long.SIZE / 8;
+	}
+
+	private void setKeyPosition(final long keyPosition, final CacheModifications modifs) {
+		modifs.add(keyPositionPosition(), keyPosition);
+	}
+
+	private void setNe(final XYNode<K> node, final CacheModifications modifs)
+			throws IOException, StorageException, SerializationException {
+		setNEPosition(node.getPosition(), modifs);
+	}
+
+	private void setNEPosition(final long position, final CacheModifications modifs)
+			throws IOException, StorageException, SerializationException {
+		modifs.add(nePosition(modifs), position);
+	}
+
+	private void setNodeType(final Byte nodeType, final CacheModifications modifs) {
+		modifs.add(noeudTypePosition(), nodeType);
+	}
+
+	private void setNw(final XYNode<K> node, final CacheModifications modifs)
+			throws IOException, StorageException, SerializationException {
+		setNWPosition(node.getPosition(), modifs);
+	}
+
+	private void setNWPosition(final long position, final CacheModifications modifs)
+			throws IOException, StorageException, SerializationException {
+		modifs.add(nwPosition(modifs), position);
+	}
+
+	private void setOptParent(final XYNode<K> daddy, final CacheModifications modifs) {
+		setOptParentPosition(daddy.getPosition(), modifs);
+	}
+
+	private void setOptParentPosition(final long optParentPosition, final CacheModifications modifs) {
+		modifs.add(optParentPositionPosition(), optParentPosition);
+	}
+
+	private void setSe(final XYNode<K> node, final CacheModifications modifs)
+			throws IOException, StorageException, SerializationException {
+		setSEPosition(node.getPosition(), modifs);
+	}
+
+	private void setSEPosition(final long position, final CacheModifications modifs)
+			throws IOException, StorageException, SerializationException {
+		modifs.add(sePosition(modifs), position);
+	}
+
+	private void setSw(final XYNode<K> node, final CacheModifications modifs)
+			throws IOException, StorageException, SerializationException {
+		setSWPosition(node.getPosition(), modifs);
+	}
+
+	private void setSWPosition(final long position, final CacheModifications modifs)
+			throws IOException, StorageException, SerializationException {
+		modifs.add(swPosition(modifs), position);
+	}
+
+	private void setValuePosition(final Long valuePosition, final CacheModifications modifs) {
+		modifs.add(valuePositionPosition(), valuePosition);
+	}
+
+	private void split(final CacheModifications modifs) throws IOException, StorageException, SerializationException {
+		final double x = getX(modifs);
+		final double y = getY(modifs);
+		final double hw = getW(modifs) / 2;
+		final double hh = getH(modifs) / 2;
 
 		setNw(new XYNode<>(index, x, y, hw, hh, this, modifs), modifs);
 		setNe(new XYNode<>(index, x + hw, y, hw, hh, this, modifs), modifs);
@@ -294,153 +544,31 @@ public class XYNode<K extends List<Double>> extends AbstractNode<K, SingletonNod
 		addAndBalance(getKey(modifs), keyPosition(modifs), valuePosition(modifs), modifs);
 	}
 
-	@Override
-	AbstractNode<K, SingletonNode<String>> deleteAndBalance(K clef, CacheModifications modifs)throws IOException, StorageException, SerializationException {
-		//useless
-		return null;
+	private long swPosition(final CacheModifications modifs)
+			throws IOException, StorageException, SerializationException {
+		return index.getStuff(sePositionPosition(), Long.class, modifs);
+	}
+
+	private long swPositionPosition() {
+		return nePositionPosition() + Long.SIZE / 8;
 	}
 
 	@Override
-	AbstractNode<K, SingletonNode<String>> findNode(K key, CacheModifications modifs) throws IOException, StorageException, SerializationException {
-		AbstractNode<K, SingletonNode<String>> ret = null;
-		byte nodeType = getNodeType(modifs);
-		if (nodeType == LEAF) {
-			Double x = key.get(0);
-			Double y = key.get(1);
-			ret = getKey(modifs).get(0) == x && getKey(modifs).get(1) == y ? this : null;
-		} else if (nodeType == POINTER) {
-			ret = getQuandrantForPoint(key, modifs).findNode(key,modifs);
-		} else if (nodeType != EMPTY){
-			throw new StorageException("Invalid nodeType");
-		}
-		return ret;
-	}
-	private AbstractNode<K, SingletonNode<String>> getQuandrantForPoint(K key, CacheModifications modifs) throws IOException, StorageException, SerializationException {
-		double mx = getX(modifs) + getW(modifs) / 2;
-		double my = getY(modifs) + getH(modifs) / 2;
-		if (key.get(0) < mx) return key.get(1) < my ? getNW(modifs) : getSW(modifs);
-		return key.get(1) < my ? getNE(modifs) : getSE(modifs);
+	long valuePosition(final CacheModifications modifs) throws IOException, StorageException, SerializationException {
+		return index.getStuff(valuePositionPosition(), Long.class, modifs);
 	}
 
-	private boolean contains(K key, CacheModifications modifs) throws IOException, StorageException, SerializationException {
-		return intersects(key.get(0), key.get(1), key.get(0), key.get(1), modifs);
+	private long wPosition() {
+		return yPosition() + Double.SIZE / 8;
 	}
 
-	private boolean intersects(double left, double bottom, double right, double top, CacheModifications modifs) throws IOException, StorageException, SerializationException {
-		return !(getX(modifs) > right ||
-				(getX(modifs) + getW(modifs)) < left ||
-				getY(modifs) > bottom ||
-				(getY(modifs) + getH(modifs)) < top);
+	// fixe
+	private long xPosition() {
+		return valuePositionPosition() + Long.SIZE / 8;
 	}
 
-	protected boolean deleteId(String id, CacheModifications modifs) throws IOException, StorageException, SerializationException {
-		if(getValue(modifs) == null) return true;
-		boolean isEmpty = false;
-		AbstractNode<String, String> newNode =  getValue(modifs).deleteAndBalance(id, modifs);
-		if(newNode == null) isEmpty = true;
-		else setValuePosition(newNode.valuePosition(modifs), modifs);
-		return isEmpty;
-	}
-	protected void insertValue(String id, long positionId, CacheModifications modifs) throws IOException, StorageException, SerializationException {
-		AbstractNode<String, String> root = getValue(modifs);
-		if(root == null) root = new SingletonNode<>(positionId, this.index, String.class, modifs);
-		else root = root.addAndBalance(id, positionId, null, modifs);
-		setValuePosition(root.getPosition(), modifs);
-	}
-	protected Iterator<SingletonNode<String>> inTheBox(double xmin, double ymin, double xmax, double ymax) throws IOException, StorageException, SerializationException {
-		return new BoxIterator(xmin, ymin, xmax, ymax);
-	}
-
-	protected class BoxIterator implements Iterator<SingletonNode<String>>{
-		private Deque<XYNode<K>> toScout = new ArrayDeque<>();
-		private SingletonNode<String> next;
-		private Iterator<SingletonNode<String>> currentUnderIterator;
-		private boolean dejaVu = false;
-		private final double xmin;
-		private final double xmax;
-		private final double ymin;
-		private final double ymax;
-
-		protected BoxIterator(double xmin, double ymin, double xmax, double ymax) throws IOException, StorageException, SerializationException{
-			this.next = null;
-			this.xmin = xmin;
-			this.ymin = ymin;
-			this.xmax = xmax;
-			this.ymax = ymax;
-			if(getNodeType(null) == POINTER) {
-				if(getNE(null).intersects(xmin, ymin, xmax, ymax, null)) toScout.push(getNE(null));
-				if(getNW(null).intersects(xmin, ymin, xmax, ymax, null)) toScout.push(getNW(null));
-				if(getSE(null).intersects(xmin, ymin, xmax, ymax, null)) toScout.push(getSE(null));
-				if(getSW(null).intersects(xmin, ymin, xmax, ymax, null)) toScout.push(getSW(null));
-			}
-			cacheNext();
-		}
-
-		@Override
-		public boolean hasNext() {
-			return next != null;
-		}
-
-		private void cacheNext() throws IOException, StorageException, SerializationException {
-			if(getNodeType(null) == EMPTY)
-				next = null;
-			else if(getNodeType(null) == LEAF) {
-				cacheNextNodeLeaf();
-			}else if(getNodeType(null) == POINTER) {
-				cacheNextPointer();
-			}
-		}
-
-		private void cacheNextPointer() throws IOException, StorageException, SerializationException {
-			while (next == null && stillNodeToScout()) {
-				if(currentUnderIterator == null) {
-					currentUnderIterator = toScout.pop().inTheBox(xmin, ymin, xmax, ymax);
-				}
-				if(currentUnderIterator.hasNext())
-					next = currentUnderIterator.next();
-				else
-					currentUnderIterator = null;
-			}
-		}
-
-		private void cacheNextNodeLeaf() throws StorageException, IOException, SerializationException {
-			if(!dejaVu) {
-				next = isPositionInBox(xmin, ymin, xmax, ymax, null) ? getValue(null) : null;
-				dejaVu = true;
-			}else next = null;
-		}
-
-		private boolean stillNodeToScout() {
-			return !toScout.isEmpty() || currentUnderIterator != null;
-		}
-
-		private boolean isPositionInBox(double left, double bottom, double right, double top, CacheModifications modifs) throws StorageException, IOException, SerializationException {
-			if(getNodeType(modifs) != LEAF)
-				throw new StorageException("this method must not be called since we are in a Leaf !");
-			List<Double> xy = getKey(modifs);
-			double x = xy.get(0);
-			double y = xy.get(1);
-			return x >= left && x <= right && y >= bottom && y <= top;
-		}
-
-		@Override
-		public SingletonNode<String> next() {
-			if(!hasNext())
-				throw new NoSuchElementException();
-			try{
-				SingletonNode<String> ret = next;
-				cacheNext();
-				return ret;
-			}catch (IOException e){
-				throw new IOError(e);
-			} catch (StorageException  | SerializationException e) {
-				throw new StorageRuntimeException(e);
-			}
-		}
-		@Override
-		public void remove() {
-			throw new UnsupportedOperationException();
-		}
+	private long yPosition() {
+		return xPosition() + Double.SIZE / 8;
 	}
 
 }
