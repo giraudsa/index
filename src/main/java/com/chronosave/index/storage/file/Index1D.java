@@ -10,6 +10,8 @@ import com.chronosave.index.storage.condition.ComputeValue;
 import com.chronosave.index.storage.exception.SerializationException;
 import com.chronosave.index.storage.exception.StorageException;
 import com.chronosave.index.storage.exception.StoreException;
+import com.chronosave.index.utils.CloseableIterator;
+import com.chronosave.index.utils.ReadWriteLock;
 
 /**
  *
@@ -117,4 +119,7 @@ public abstract class Index1D<U, K, V extends Comparable<V>, N> extends Abstract
 		rootPosition = abstractNode == null ? NULL : abstractNode.getPosition();
 		modifs.add(ROOT_POSITION_POSITION, rootPosition);
 	}
+
+	public abstract CloseableIterator<V> getBetween(K min, K max, ReadWriteLock locker)
+			throws IOException, StorageException, SerializationException, InterruptedException;
 }

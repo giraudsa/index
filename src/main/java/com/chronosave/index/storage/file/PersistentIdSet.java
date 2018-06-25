@@ -9,6 +9,8 @@ import java.util.UUID;
 import com.chronosave.index.storage.condition.GetId;
 import com.chronosave.index.storage.exception.SerializationException;
 import com.chronosave.index.storage.exception.StorageException;
+import com.chronosave.index.utils.CloseableIterator;
+import com.chronosave.index.utils.ReadWriteLock;
 
 public class PersistentIdSet<U> extends Index1D<U, String, String, String> implements Closeable {
 
@@ -61,5 +63,11 @@ public class PersistentIdSet<U> extends Index1D<U, String, String, String> imple
 	private void removeFile() throws IOException {
 		Files.deleteIfExists(file);
 		raf = null;
+	}
+
+	@Override
+	public CloseableIterator<String> getBetween(final String min, final String max, final ReadWriteLock locker)
+			throws IOException, StorageException, SerializationException, InterruptedException {
+		throw new InterruptedException("internal use only");
 	}
 }

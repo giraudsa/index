@@ -13,6 +13,7 @@ import com.chronosave.index.storage.exception.StorageException;
 import com.chronosave.index.storage.exception.StorageRuntimeException;
 import com.chronosave.index.storage.exception.StoreException;
 import com.chronosave.index.utils.CloseableIterator;
+import com.chronosave.index.utils.ReadWriteLock;
 
 public class PrimaryIndexFile<U> extends Index1D<U, String, Long, Long> implements Iterable<String> {
 
@@ -156,5 +157,53 @@ public class PrimaryIndexFile<U> extends Index1D<U, String, Long, Long> implemen
 			}
 		}
 		setVersion(version);
+	}
+
+	@Override
+	public CloseableIterator<Long> getBetween(final String min, final String max, final ReadWriteLock locker)
+			throws IOException, StorageException, SerializationException, InterruptedException {
+		return new PositionIterator((SimpleNode<String, Long>) getRoot(null), min, max, locker);
+	}
+
+	private class PositionIterator implements CloseableIterator<Long> {
+
+		private boolean closed = false;
+		private final Iterator<Long> iterator;
+		private final ReadWriteLock locker;
+
+		private PositionIterator(final SimpleNode<String, Long> root, final String min, final String max,
+				final ReadWriteLock locker) throws InterruptedException {
+			locker.lockRead();
+			this.locker = locker;
+			iterator = root.iterator(min, max);
+		}
+
+		@Override
+		public void close() throws IOException {
+			locker.unlockRead();
+			closed = true;
+		}
+
+		@Override
+		public boolean hasNext() {
+			if (closed)
+				throw new IllegalStateException("Iterator has been closed!");
+			return iterator.hasNext();
+		}
+
+		@Override
+		public Long next() {
+			if (closed)
+				throw new IllegalStateException("Iterator has been closed!");
+			if (!iterator.hasNext())
+				throw new NoSuchElementException();
+			return iterator.next();
+		}
+
+		@Override
+		public void remove() {
+			throw new UnsupportedOperationException();
+		}
+
 	}
 }

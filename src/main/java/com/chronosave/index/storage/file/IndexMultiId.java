@@ -2,11 +2,15 @@ package com.chronosave.index.storage.file;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
 
 import com.chronosave.index.storage.condition.ComputeKey;
 import com.chronosave.index.storage.exception.SerializationException;
 import com.chronosave.index.storage.exception.StorageException;
 import com.chronosave.index.storage.exception.StoreException;
+import com.chronosave.index.utils.CloseableIterator;
+import com.chronosave.index.utils.ReadWriteLock;
 
 /**
  *
@@ -82,6 +86,75 @@ public abstract class IndexMultiId<U, K extends Comparable<K>, R>
 	@Override
 	protected Class<?> getValueTypeOfNode() {
 		return SingletonNode.class;
+	}
+
+	@Override
+	public CloseableIterator<String> getBetween(final K min, final K max, final ReadWriteLock locker)
+			throws IOException, StorageException, SerializationException, InterruptedException {
+		return new NodeIterator((ComplexNode<K, String>) getRoot(null), min, max, locker);
+	}
+
+	private class NodeIterator implements CloseableIterator<String> {
+
+		private boolean closed = false;
+		private final Iterator<SingletonNode<String>> complexNodeIterator;
+		private boolean hasNext;
+		private Iterator<String> idNodeIterator;
+		private final ReadWriteLock locker;
+		private String next;
+
+		private NodeIterator(final ComplexNode<K, String> root, final K min, final K max, final ReadWriteLock locker)
+				throws InterruptedException {
+			locker.lockRead();
+			this.locker = locker;
+			complexNodeIterator = root.iterator(min, max);
+			cacheNext();
+		}
+
+		private void cacheNext() {
+			if (idNodeIterator != null && idNodeIterator.hasNext()) {
+				next = idNodeIterator.next();
+				hasNext = true;
+				return;
+			}
+			while (complexNodeIterator.hasNext()) {
+				idNodeIterator = complexNodeIterator.next().iterator();
+				hasNext = idNodeIterator.hasNext();
+				next = hasNext ? idNodeIterator.next() : null;
+				if (hasNext)
+					return;
+			}
+		}
+
+		@Override
+		public void close() throws IOException {
+			locker.unlockRead();
+			closed = true;
+		}
+
+		@Override
+		public boolean hasNext() {
+			if (closed)
+				throw new IllegalStateException("Iterator has been closed!");
+			return hasNext;
+		}
+
+		@Override
+		public String next() {
+			if (closed)
+				throw new IllegalStateException("Iterator has been closed!");
+			if (next == null)
+				throw new NoSuchElementException();
+			final String ret = next;
+			cacheNext();
+			return ret;
+		}
+
+		@Override
+		public void remove() {
+			throw new UnsupportedOperationException();
+		}
+
 	}
 
 }
