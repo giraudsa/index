@@ -7,7 +7,7 @@ import com.chronosave.index.storage.exception.SerializationException;
 import com.chronosave.index.storage.exception.StorageException;
 import com.chronosave.index.storage.exception.StoreException;
 import com.chronosave.index.storage.file.AbstractIndex;
-import com.chronosave.index.storage.file.IndexKeyToMultiId;
+import com.chronosave.index.storage.file.Index1D;
 import com.chronosave.index.storage.memory.MemoryIndex;
 import com.chronosave.index.storage.memory.MemoryIndexAVL;
 import com.chronosave.index.utils.CloseableIterator;
@@ -28,7 +28,7 @@ public class ConditionEquals<K extends Comparable<K>, U> extends ConditionCompar
 	public CloseableIterator<String> run(final AbstractIndex<U, ?, ?> index, final ReadWriteLock locker)
 			throws StoreException, InterruptedException {
 		try {
-			return ((IndexKeyToMultiId<U, K>) index).getBetween(valeurCible, valeurCible, locker);
+			return ((Index1D<U, K, String, ?>) index).getBetween(valeurCible, valeurCible, locker);
 		} catch (IOException | StorageException | SerializationException e) {
 			throw new StoreException(e);
 		}

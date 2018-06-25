@@ -7,7 +7,7 @@ import com.chronosave.index.storage.exception.SerializationException;
 import com.chronosave.index.storage.exception.StorageException;
 import com.chronosave.index.storage.exception.StoreException;
 import com.chronosave.index.storage.file.AbstractIndex;
-import com.chronosave.index.storage.file.IndexKeyToMultiId;
+import com.chronosave.index.storage.file.Index1D;
 import com.chronosave.index.storage.memory.MemoryIndex;
 import com.chronosave.index.storage.memory.MemoryIndexAVL;
 import com.chronosave.index.utils.CloseableIterator;
@@ -30,7 +30,7 @@ public class ConditionBetween<K extends Comparable<K>, U> extends ConditionCompa
 	public CloseableIterator<String> run(final AbstractIndex<U, ?, ?> index, final ReadWriteLock locker)
 			throws StoreException, InterruptedException {
 		try {
-			return ((IndexKeyToMultiId<U, K>) index).getBetween(min, max, locker);
+			return ((Index1D<U, K, String, ?>) index).getBetween(min, max, locker);
 		} catch (IOException | StorageException | SerializationException e) {
 			throw new StoreException(e);
 		}
