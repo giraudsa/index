@@ -20,13 +20,10 @@ import com.chronosave.index.utils.ReadWriteLock;
  *            Object
  * @param <K>
  *            Key
- * @param <N>
- *            Value type of Node
  * @param <R>
  *            Value type of Reverse node
  */
-public abstract class IndexMultiId<U, K extends Comparable<K>, R>
-		extends IndexBiDirectionalId<U, K, SingletonNode<String>, R> {
+public abstract class IndexMultiId<U, K extends Comparable<K>, R> extends IndexBiDirectionalId<U, K, SingletonNode<String>, R> {
 	/**
 	 * runtime
 	 * 
@@ -39,8 +36,7 @@ public abstract class IndexMultiId<U, K extends Comparable<K>, R>
 	 * @throws StorageException
 	 * @throws SerializationException
 	 */
-	public IndexMultiId(final Path basePath, final Class<K> keyType, final Store<U> store, final String extention,
-			final ComputeKey<K, U> delegateKey) throws IOException, StorageException, SerializationException {
+	public IndexMultiId(final Path basePath, final Class<K> keyType, final Store<U> store, final String extention, final ComputeKey<K, U> delegateKey) throws IOException, StorageException, SerializationException {
 		super(basePath, keyType, store, extention, delegateKey);
 	}
 
@@ -55,23 +51,20 @@ public abstract class IndexMultiId<U, K extends Comparable<K>, R>
 	 * @throws SerializationException
 	 * @throws StoreException
 	 */
-	public IndexMultiId(final Path file, final Store<U> store)
-			throws IOException, StorageException, ClassNotFoundException, SerializationException, StoreException {
+	public IndexMultiId(final Path file, final Store<U> store) throws IOException, StorageException, ClassNotFoundException, SerializationException, StoreException {
 		super(file, store);
 	}
 
 	@Override
-	protected void addKeyToValue(final K key, final long keyPosition, final String id, final long idPosition,
-			final CacheModifications modifs) throws IOException, StorageException, SerializationException {
+	protected void addKeyToValue(final K key, final long keyPosition, final String id, final long idPosition, final CacheModifications modifs) throws IOException, StorageException, SerializationException {
 		setRoot(getRoot(modifs).addAndBalance(key, keyPosition, NULL, modifs), modifs);
-		final ComplexNode<K, String> n = (ComplexNode<K, String>) getRoot(modifs).findNode(key, modifs);
+		final ComplexNormalNode<K, String> n = (ComplexNormalNode<K, String>) getRoot(modifs).findNode(key, modifs);
 		n.storeValue(id, idPosition, modifs);
 	}
 
 	@Override
-	protected void deleteKtoId(final K key, final String id, final CacheModifications modifs)
-			throws IOException, StorageException, SerializationException {
-		final ComplexNode<K, String> complexNode = (ComplexNode<K, String>) getRoot(modifs).findNode(key, modifs);
+	protected void deleteKtoId(final K key, final String id, final CacheModifications modifs) throws IOException, StorageException, SerializationException {
+		final ComplexNormalNode<K, String> complexNode = (ComplexNormalNode<K, String>) getRoot(modifs).findNode(key, modifs);
 		final boolean aSupprimer = complexNode.removeValue(id, modifs);
 		if (aSupprimer)
 			setRoot(getRoot(modifs).deleteAndBalance(key, modifs), modifs);
@@ -80,7 +73,12 @@ public abstract class IndexMultiId<U, K extends Comparable<K>, R>
 	@SuppressWarnings("unchecked")
 	@Override
 	protected Class<? extends AbstractNode<K, SingletonNode<String>>> getNodeType() {
-		return (Class<? extends AbstractNode<K, SingletonNode<String>>>) ComplexNode.class;
+		return (Class<? extends AbstractNode<K, SingletonNode<String>>>) ComplexNormalNode.class;
+	}
+
+	@Override
+	protected AbstractNode<K, SingletonNode<String>> createFakeNode(final CacheModifications modifs) {
+		return new ComplexNormalNode<>(keyType, this, modifs);
 	}
 
 	@Override
@@ -89,9 +87,8 @@ public abstract class IndexMultiId<U, K extends Comparable<K>, R>
 	}
 
 	@Override
-	public CloseableIterator<String> getBetween(final K min, final K max, final ReadWriteLock locker)
-			throws IOException, StorageException, SerializationException, InterruptedException {
-		return new NodeIterator((ComplexNode<K, String>) getRoot(null), min, max, locker);
+	public CloseableIterator<String> getBetween(final K min, final K max, final ReadWriteLock locker) throws IOException, StorageException, SerializationException, InterruptedException {
+		return new NodeIterator((ComplexNormalNode<K, String>) getRoot(null), min, max, locker);
 	}
 
 	private class NodeIterator implements CloseableIterator<String> {
@@ -103,8 +100,7 @@ public abstract class IndexMultiId<U, K extends Comparable<K>, R>
 		private final ReadWriteLock locker;
 		private String next;
 
-		private NodeIterator(final ComplexNode<K, String> root, final K min, final K max, final ReadWriteLock locker)
-				throws InterruptedException {
+		private NodeIterator(final ComplexNormalNode<K, String> root, final K min, final K max, final ReadWriteLock locker) {
 			locker.lockRead();
 			this.locker = locker;
 			complexNodeIterator = root.iterator(min, max);

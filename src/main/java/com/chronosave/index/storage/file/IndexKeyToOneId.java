@@ -34,8 +34,7 @@ public class IndexKeyToOneId<U, K extends Comparable<K>> extends IndexBiDirectio
 	 * @throws StorageException
 	 * @throws SerializationException
 	 */
-	protected IndexKeyToOneId(final Path basePath, final Class<K> keyType, final Store<U> store,
-			final ComputeKey<K, U> delegateKey) throws IOException, StorageException, SerializationException {
+	protected IndexKeyToOneId(final Path basePath, final Class<K> keyType, final Store<U> store, final ComputeKey<K, U> delegateKey) throws IOException, StorageException, SerializationException {
 		super(basePath, keyType, store, EXTENTION, delegateKey);
 	}
 
@@ -50,14 +49,12 @@ public class IndexKeyToOneId<U, K extends Comparable<K>> extends IndexBiDirectio
 	 * @throws SerializationException
 	 * @throws StoreException
 	 */
-	protected IndexKeyToOneId(final Path file, final Store<U> store)
-			throws IOException, StorageException, ClassNotFoundException, SerializationException, StoreException {
+	protected IndexKeyToOneId(final Path file, final Store<U> store) throws IOException, StorageException, ClassNotFoundException, SerializationException, StoreException {
 		super(file, store);
 	}
 
 	@Override
-	protected void add(final K key, final String id, final CacheModifications modifs)
-			throws IOException, StorageException, SerializationException {
+	protected void add(final K key, final String id, final CacheModifications modifs) throws IOException, StorageException, SerializationException {
 		final AbstractNode<String, K> oldReverseNode = getReverseRoot(modifs).findNode(id, modifs);
 		if (oldReverseNode != null) {
 			final K oldKey = oldReverseNode.getValue(modifs);
@@ -70,8 +67,7 @@ public class IndexKeyToOneId<U, K extends Comparable<K>> extends IndexBiDirectio
 
 	@Override
 	@SuppressWarnings("unchecked")
-	protected void delete(final String id, final CacheModifications modifs)
-			throws IOException, StorageException, SerializationException {
+	protected void delete(final String id, final CacheModifications modifs) throws IOException, StorageException, SerializationException {
 		if (id == null)
 			return;
 		final AbstractNode<String, ?> reverseNode = getReverseRoot(modifs).findNode(id, modifs);
@@ -82,8 +78,7 @@ public class IndexKeyToOneId<U, K extends Comparable<K>> extends IndexBiDirectio
 	}
 
 	@Override
-	protected void deleteKtoId(final K key, final String value, final CacheModifications modifs)
-			throws IOException, StorageException, SerializationException {
+	protected void deleteKtoId(final K key, final String value, final CacheModifications modifs) throws IOException, StorageException, SerializationException {
 		setRoot(getRoot(modifs).deleteAndBalance(key, modifs), modifs);
 	}
 
@@ -97,12 +92,21 @@ public class IndexKeyToOneId<U, K extends Comparable<K>> extends IndexBiDirectio
 	@SuppressWarnings("unchecked")
 	@Override
 	protected Class<? extends AbstractNode<String, K>> getReverseNodeType() {
-		return (Class<? extends AbstractNode<String, K>>) SimpleNode.class;
+		return (Class<? extends AbstractNode<String, K>>) SimpleReverseNode.class;
 	}
 
 	@Override
-	public CloseableIterator<String> getBetween(final K min, final K max, final ReadWriteLock locker)
-			throws IOException, StorageException, SerializationException, InterruptedException {
+	protected AbstractNode<K, String> createFakeNode(final CacheModifications modifs) {
+		return new SimpleNode<>(keyType, valueType, this, modifs);
+	}
+
+	@Override
+	protected AbstractNode<String, K> createFakeReverseNode(final CacheModifications modifs) {
+		return new SimpleReverseNode<>(keyType, valueType, this, modifs);
+	}
+
+	@Override
+	public CloseableIterator<String> getBetween(final K min, final K max, final ReadWriteLock locker) throws IOException, StorageException, SerializationException, InterruptedException {
 		return new IdIterator((SimpleNode<K, String>) getRoot(null), min, max, locker);
 	}
 
@@ -112,8 +116,7 @@ public class IndexKeyToOneId<U, K extends Comparable<K>> extends IndexBiDirectio
 		private final Iterator<String> iterator;
 		private final ReadWriteLock locker;
 
-		private IdIterator(final SimpleNode<K, String> root, final K min, final K max, final ReadWriteLock locker)
-				throws InterruptedException {
+		private IdIterator(final SimpleNode<K, String> root, final K min, final K max, final ReadWriteLock locker) {
 			locker.lockRead();
 			this.locker = locker;
 			iterator = root.iterator(min, max);
@@ -146,5 +149,12 @@ public class IndexKeyToOneId<U, K extends Comparable<K>> extends IndexBiDirectio
 			throw new UnsupportedOperationException();
 		}
 
+	}
+
+	@Override
+	protected <N extends AbstractNode<?, ?>> AbstractNode<?, ?> readAbstractNode(final long nodePosition, final Class<N> nodeType) {
+		if (ReverseNode.class.isAssignableFrom(nodeType))
+			return new SimpleReverseNode<>(nodePosition, this, keyType, valueType);
+		return new SimpleNode<>(nodePosition, this, keyType, valueType);
 	}
 }

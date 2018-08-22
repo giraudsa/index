@@ -80,8 +80,7 @@ public class PrimaryIndexFile<U> extends Index1D<U, String, Long, Long> implemen
 	 * @throws SerializationException
 	 * @throws StoreException
 	 */
-	protected PrimaryIndexFile(final Path file, final Store<U> store, final long lastGoodVersion)
-			throws IOException, StorageException, ClassNotFoundException, SerializationException, StoreException {
+	protected PrimaryIndexFile(final Path file, final Store<U> store, final long lastGoodVersion) throws IOException, StorageException, ClassNotFoundException, SerializationException, StoreException {
 		super(Long.class, file, store, new GetIndexedObjectInDataFile<>(store));
 	}
 
@@ -93,10 +92,8 @@ public class PrimaryIndexFile<U> extends Index1D<U, String, Long, Long> implemen
 	 * @throws StorageException
 	 * @throws SerializationException
 	 */
-	protected PrimaryIndexFile(final Store<U> store, final Path basePath)
-			throws IOException, StorageException, SerializationException {
-		super(String.class, Long.class, getPath(basePath, store.debutNomFichier()), store,
-				new GetId<>(store.getIdManager()), new GetIndexedObjectInDataFile<>(store));
+	protected PrimaryIndexFile(final Store<U> store, final Path basePath) throws IOException, StorageException, SerializationException {
+		super(String.class, Long.class, getPath(basePath, store.debutNomFichier()), store, new GetId<>(store.getIdManager()), new GetIndexedObjectInDataFile<>(store));
 	}
 
 	@Override
@@ -104,8 +101,7 @@ public class PrimaryIndexFile<U> extends Index1D<U, String, Long, Long> implemen
 		/* nothing to do */}
 
 	@Override
-	protected void delete(final String id, final long version, final CacheModifications modifs)
-			throws IOException, StorageException, SerializationException {
+	protected void delete(final String id, final long version, final CacheModifications modifs) throws IOException, StorageException, SerializationException {
 		store.delete(id, version);
 		setRoot(getRoot(modifs).deleteAndBalance(id, modifs), modifs);
 	}
@@ -120,8 +116,12 @@ public class PrimaryIndexFile<U> extends Index1D<U, String, Long, Long> implemen
 		return (Class<? extends AbstractNode<String, Long>>) SimpleNode.class;
 	}
 
-	private Long getPositionInDataFile(final String id, final CacheModifications modifs)
-			throws IOException, StorageException, SerializationException {
+	@Override
+	protected AbstractNode<String, Long> createFakeNode(final CacheModifications modifs) {
+		return new SimpleNode<>(keyType, valueType, this, modifs);
+	}
+
+	private Long getPositionInDataFile(final String id, final CacheModifications modifs) throws IOException, StorageException, SerializationException {
 		final AbstractNode<String, Long> node = getRoot(modifs).findNode(id, modifs);
 		if (node == null)
 			return null;
@@ -160,8 +160,7 @@ public class PrimaryIndexFile<U> extends Index1D<U, String, Long, Long> implemen
 	}
 
 	@Override
-	public CloseableIterator<Long> getBetween(final String min, final String max, final ReadWriteLock locker)
-			throws IOException, StorageException, SerializationException, InterruptedException {
+	public CloseableIterator<Long> getBetween(final String min, final String max, final ReadWriteLock locker) throws IOException, StorageException, SerializationException, InterruptedException {
 		return new PositionIterator((SimpleNode<String, Long>) getRoot(null), min, max, locker);
 	}
 
@@ -171,8 +170,7 @@ public class PrimaryIndexFile<U> extends Index1D<U, String, Long, Long> implemen
 		private final Iterator<Long> iterator;
 		private final ReadWriteLock locker;
 
-		private PositionIterator(final SimpleNode<String, Long> root, final String min, final String max,
-				final ReadWriteLock locker) throws InterruptedException {
+		private PositionIterator(final SimpleNode<String, Long> root, final String min, final String max, final ReadWriteLock locker) {
 			locker.lockRead();
 			this.locker = locker;
 			iterator = root.iterator(min, max);
@@ -205,5 +203,10 @@ public class PrimaryIndexFile<U> extends Index1D<U, String, Long, Long> implemen
 			throw new UnsupportedOperationException();
 		}
 
+	}
+
+	@Override
+	protected <N extends AbstractNode<?, ?>> AbstractNode<?, ?> readAbstractNode(final long nodePosition, final Class<N> nodeType) {
+		return new SimpleNode<>(nodePosition, this, keyType, valueType);
 	}
 }

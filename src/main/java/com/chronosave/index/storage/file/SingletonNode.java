@@ -15,8 +15,7 @@ public class SingletonNode<K extends Comparable<K>> extends SimpleNode<K, K> {
 	 * @param index
 	 * @param modifs
 	 */
-	public SingletonNode(final Class<K> keyType, final Class<?> dummy, final AbstractIndex<?, ?, ?> index,
-			final CacheModifications modifs) {
+	public SingletonNode(final Class<K> keyType, final AbstractIndex<?, ?, ?> index, final CacheModifications modifs) {
 		super(keyType, keyType, index, modifs);
 	}
 
@@ -32,8 +31,7 @@ public class SingletonNode<K extends Comparable<K>> extends SimpleNode<K, K> {
 	 * @throws StorageException
 	 * @throws SerializationException
 	 */
-	public SingletonNode(final long keyPosition, final AbstractIndex<?, ?, ?> index, final Class<K> keyType,
-			final CacheModifications modifs) throws StorageException, SerializationException {
+	public SingletonNode(final long keyPosition, final AbstractIndex<?, ?, ?> index, final Class<K> keyType, final CacheModifications modifs) throws StorageException, SerializationException {
 		super(keyPosition, null, index, keyType, keyType, modifs);
 	}
 
@@ -48,8 +46,7 @@ public class SingletonNode<K extends Comparable<K>> extends SimpleNode<K, K> {
 	 * @throws StorageException
 	 * @throws SerializationException
 	 */
-	public SingletonNode(final long position, final AbstractIndex<?, ?, ?> index, final Class<K> keyType,
-			final Class<?> dummy) {
+	public SingletonNode(final long position, final AbstractIndex<?, ?, ?> index, final Class<K> keyType) {
 		super(position, index, keyType, keyType);
 	}
 
@@ -59,8 +56,7 @@ public class SingletonNode<K extends Comparable<K>> extends SimpleNode<K, K> {
 	}
 
 	@Override
-	protected Node1D<K, K> newNode(final long keyPosition, final Long valuePosition, final AbstractIndex<?, ?, ?> index,
-			final CacheModifications modifs) throws IOException, StorageException, SerializationException {
+	protected Node1D<K, K> newNode(final long keyPosition, final Long valuePosition, final AbstractIndex<?, ?, ?> index, final CacheModifications modifs) throws IOException, StorageException, SerializationException {
 		return new SingletonNode<>(keyPosition, index, keyType, modifs);
 	}
 

@@ -1,40 +1,27 @@
 package com.chronosave.index.utils;
 
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+
 public class ReadWriteLock {
+	private final java.util.concurrent.locks.ReadWriteLock locker = new ReentrantReadWriteLock();
 
-	private int readers = 0;
-	private int writeRequests = 0;
-	private int writers = 0;
-
-	/**
-	 * @param tailleMax
-	 */
 	public ReadWriteLock() {
 		super();
 	}
 
-	public synchronized void lockRead() throws InterruptedException {
-		while (writers > 0 || writeRequests > 0)
-			wait();
-		++readers;
+	public void lockRead() {
+		locker.readLock().lock();
 	}
 
-	public synchronized void lockWrite() throws InterruptedException {
-		++writeRequests;
-
-		while (readers > 0 || writers > 0)
-			wait();
-		--writeRequests;
-		++writers;
+	public void unlockRead() {
+		locker.readLock().unlock();
 	}
 
-	public synchronized void unlockRead() {
-		--readers;
-		notifyAll();
+	public void lockWrite() {
+		locker.writeLock().lock();
 	}
 
-	public synchronized void unlockWrite() {
-		--writers;
-		notifyAll();
+	public void unlockWrite() {
+		locker.writeLock().unlock();
 	}
 }

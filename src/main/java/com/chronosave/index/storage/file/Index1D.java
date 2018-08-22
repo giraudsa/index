@@ -1,7 +1,6 @@
 package com.chronosave.index.storage.file;
 
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
@@ -28,8 +27,7 @@ import com.chronosave.index.utils.ReadWriteLock;
  */
 public abstract class Index1D<U, K, V extends Comparable<V>, N> extends AbstractIndex<U, K, V> {
 
-	protected static Path getPath(final Path basePath, final String debutNomFichier, final String extention,
-			final ComputeKey<?, ?> delegateKey) {
+	protected static Path getPath(final Path basePath, final String debutNomFichier, final String extention, final ComputeKey<?, ?> delegateKey) {
 		return Paths.get(basePath.toString(), debutNomFichier + extention + "." + delegateKey.hashCode() + ".0");
 	}
 
@@ -46,9 +44,7 @@ public abstract class Index1D<U, K, V extends Comparable<V>, N> extends Abstract
 	 * @throws StorageException
 	 * @throws SerializationException
 	 */
-	public Index1D(final Class<K> keyType, final Class<V> valueType, final Path fileStore, final Store<U> store,
-			final ComputeKey<K, U> delegateKey, final ComputeValue<V, U> delegateValue)
-			throws IOException, StorageException, SerializationException {
+	public Index1D(final Class<K> keyType, final Class<V> valueType, final Path fileStore, final Store<U> store, final ComputeKey<K, U> delegateKey, final ComputeValue<V, U> delegateValue) throws IOException, StorageException, SerializationException {
 		super(keyType, valueType, fileStore, store, delegateKey, delegateValue);
 	}
 
@@ -65,34 +61,28 @@ public abstract class Index1D<U, K, V extends Comparable<V>, N> extends Abstract
 	 * @throws SerializationException
 	 * @throws StoreException
 	 */
-	public Index1D(final Class<V> valueType, final Path file, final Store<U> store,
-			final ComputeValue<V, U> delegateValue)
-			throws IOException, StorageException, ClassNotFoundException, SerializationException, StoreException {
+	public Index1D(final Class<V> valueType, final Path file, final Store<U> store, final ComputeValue<V, U> delegateValue) throws IOException, StorageException, ClassNotFoundException, SerializationException, StoreException {
 		super(valueType, file, store, delegateValue);
 	}
 
-	protected void add(final K key, final long keyPosition, final V value, final long valuePosition,
-			final CacheModifications modifs) throws StorageException, IOException, SerializationException {
+	protected void add(final K key, final long keyPosition, final V value, final long valuePosition, final CacheModifications modifs) throws StorageException, IOException, SerializationException {
 		addKeyToValue(key, keyPosition, value, valuePosition, modifs);
 	}
 
 	@Override
-	protected void add(final K key, final V value, final CacheModifications modifs)
-			throws SerializationException, IOException, StorageException {
+	protected void add(final K key, final V value, final CacheModifications modifs) throws SerializationException, IOException, StorageException {
 		final long keyPosition = getKeyPosition(key, modifs);
 		final long valuePosition = writeFakeAndCache(value, modifs);
 		add(key, keyPosition, value, valuePosition, modifs);
 	}
 
 	@Override
-	protected void addKeyToValue(final K key, final long keyPosition, final V value, final long idPosition,
-			final CacheModifications modifs) throws IOException, StorageException, SerializationException {
+	protected void addKeyToValue(final K key, final long keyPosition, final V value, final long idPosition, final CacheModifications modifs) throws IOException, StorageException, SerializationException {
 		setRoot(getRoot(modifs).addAndBalance(key, keyPosition, idPosition, modifs), modifs);
 	}
 
 	@Override
-	protected long getKeyPosition(final K key, final CacheModifications modifs)
-			throws IOException, StorageException, SerializationException {
+	protected long getKeyPosition(final K key, final CacheModifications modifs) throws IOException, StorageException, SerializationException {
 		if (key == null)
 			return NULL;
 		final AbstractNode<K, ?> node = getRoot(modifs).findNode(key, modifs);
@@ -101,17 +91,11 @@ public abstract class Index1D<U, K, V extends Comparable<V>, N> extends Abstract
 
 	protected abstract Class<? extends AbstractNode<K, N>> getNodeType();
 
-	protected AbstractNode<K, N> getRoot(final CacheModifications modifs)
-			throws IOException, StorageException, SerializationException {
-		try {
-			if (rootPosition == NULL) // Fake node
-				return getNodeType()
-						.getConstructor(Class.class, Class.class, AbstractIndex.class, CacheModifications.class)
-						.newInstance(keyType, getValueTypeOfNode(), this, modifs);
-		} catch (InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException
-				| NoSuchMethodException | SecurityException e) {
-			throw new StorageException("impossible to create fake node", e);
-		}
+	protected abstract AbstractNode<K, N> createFakeNode(CacheModifications modifs);
+
+	protected AbstractNode<K, N> getRoot(final CacheModifications modifs) throws IOException, StorageException, SerializationException {
+		if (rootPosition == NULL) // Fake node
+			return createFakeNode(modifs);
 		return getStuff(rootPosition, getNodeType(), modifs);
 	}
 
@@ -120,6 +104,5 @@ public abstract class Index1D<U, K, V extends Comparable<V>, N> extends Abstract
 		modifs.add(ROOT_POSITION_POSITION, rootPosition);
 	}
 
-	public abstract CloseableIterator<V> getBetween(K min, K max, ReadWriteLock locker)
-			throws IOException, StorageException, SerializationException, InterruptedException;
+	public abstract CloseableIterator<V> getBetween(K min, K max, ReadWriteLock locker) throws IOException, StorageException, SerializationException, InterruptedException;
 }

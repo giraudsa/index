@@ -4,8 +4,6 @@ import static java.nio.file.StandardCopyOption.ATOMIC_MOVE;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -72,9 +70,7 @@ public abstract class AbstractIndex<U, K, V> {
 	 * @throws StorageException
 	 * @throws SerializationException
 	 */
-	protected AbstractIndex(final Class<K> keyType, final Class<V> valueType, final Path fileStockage,
-			final Store<U> store, final ComputeKey<K, U> delegateKey, final ComputeValue<V, U> delegateValeur)
-			throws IOException, StorageException, SerializationException {
+	protected AbstractIndex(final Class<K> keyType, final Class<V> valueType, final Path fileStockage, final Store<U> store, final ComputeKey<K, U> delegateKey, final ComputeValue<V, U> delegateValeur) throws IOException, StorageException, SerializationException {
 		this.file = fileStockage;
 		Files.createFile(file);
 		newRandomAccessFile();
@@ -101,9 +97,7 @@ public abstract class AbstractIndex<U, K, V> {
 	 * @throws ForsException
 	 * @throws ClassNotFoundException
 	 */
-	protected AbstractIndex(final Class<V> valueType, final Path file, final Store<U> store,
-			final ComputeValue<V, U> delegateValue)
-			throws IOException, StorageException, ClassNotFoundException, SerializationException, StoreException {
+	protected AbstractIndex(final Class<V> valueType, final Path file, final Store<U> store, final ComputeValue<V, U> delegateValue) throws IOException, StorageException, ClassNotFoundException, SerializationException, StoreException {
 		this.file = file;
 		newRandomAccessFile();
 		this.endOfFile = raf.length();
@@ -128,11 +122,9 @@ public abstract class AbstractIndex<U, K, V> {
 		}
 	}
 
-	protected abstract void add(K key, V value, CacheModifications modifs)
-			throws StorageException, IOException, SerializationException;
+	protected abstract void add(K key, V value, CacheModifications modifs) throws StorageException, IOException, SerializationException;
 
-	protected void add(final U objectToAdd, final long version, final CacheModifications modifs)
-			throws StorageException, IOException, SerializationException {
+	protected void add(final U objectToAdd, final long version, final CacheModifications modifs) throws StorageException, IOException, SerializationException {
 		add(getKey(objectToAdd), computeValue(objectToAdd, version), modifs);// version is used in override method in
 																				// primary index
 	}
@@ -143,8 +135,7 @@ public abstract class AbstractIndex<U, K, V> {
 		}
 	}
 
-	protected abstract void addKeyToValue(K key, long keyPosition, V value, long valuePosition,
-			CacheModifications modifs) throws IOException, StorageException, SerializationException;
+	protected abstract void addKeyToValue(K key, long keyPosition, V value, long valuePosition, CacheModifications modifs) throws IOException, StorageException, SerializationException;
 
 	protected void clear() throws IOException, StorageException, SerializationException {
 		raf.setLength(0);
@@ -152,27 +143,22 @@ public abstract class AbstractIndex<U, K, V> {
 		initFile();
 	}
 
-	protected V computeValue(final U object, final long version)
-			throws StorageException, IOException, SerializationException {
+	protected V computeValue(final U object, final long version) throws StorageException, IOException, SerializationException {
 		return delegateValue.getValue(object, version);
 
 	}
 
-	protected abstract void delete(String id, CacheModifications modifs)
-			throws IOException, StorageException, SerializationException;
+	protected abstract void delete(String id, CacheModifications modifs) throws IOException, StorageException, SerializationException;
 
-	protected void delete(final String id, final long version, final CacheModifications modifs)
-			throws IOException, StorageException, SerializationException {
+	protected void delete(final String id, final long version, final CacheModifications modifs) throws IOException, StorageException, SerializationException {
 		if (this.version > version)
 			return;
 		delete(id, modifs);
 	}
 
-	protected abstract void deleteKtoId(K key, V value, CacheModifications modifs)
-			throws IOException, StorageException, SerializationException;
+	protected abstract void deleteKtoId(K key, V value, CacheModifications modifs) throws IOException, StorageException, SerializationException;
 
-	protected CacheModifications deleteObjects(final Collection<String> ids, final long v)
-			throws IOException, StorageException, SerializationException {
+	protected CacheModifications deleteObjects(final Collection<String> ids, final long v) throws IOException, StorageException, SerializationException {
 		final CacheModifications modifs = new CacheModifications(this, v);
 		for (final String id : ids)
 			delete(id, v, modifs);
@@ -195,11 +181,9 @@ public abstract class AbstractIndex<U, K, V> {
 		return delegateKey.getKey(object);
 	}
 
-	protected abstract long getKeyPosition(K key, CacheModifications modifs)
-			throws IOException, StorageException, SerializationException;
+	protected abstract long getKeyPosition(K key, CacheModifications modifs) throws IOException, StorageException, SerializationException;
 
-	protected <W> W getStuff(final long stuffPosition, final Class<W> stuffType, final CacheModifications modifs)
-			throws IOException, StorageException, SerializationException {
+	protected <W> W getStuff(final long stuffPosition, final Class<W> stuffType, final CacheModifications modifs) throws IOException, SerializationException {
 		if (stuffPosition < 0)
 			return null;
 		W stuff = null;
@@ -242,19 +226,7 @@ public abstract class AbstractIndex<U, K, V> {
 		endOfFile = raf.length();
 	}
 
-	@SuppressWarnings({ "rawtypes" })
-	private <N extends AbstractNode> AbstractNode<?, ?> readAbstractNode(final long nodePosition,
-			final Class<N> nodeType) throws StorageException {
-		try {
-			final Constructor<N> constr = nodeType.getConstructor(long.class, AbstractIndex.class, Class.class,
-					Class.class);
-			return constr.newInstance(nodePosition, this, keyType, getValueTypeOfNode());
-		} catch (InstantiationException | IllegalAccessException | NoSuchMethodException | SecurityException
-				| IllegalArgumentException | InvocationTargetException e) {
-			throw new StorageException(
-					"the node type " + nodeType.getName() + " is not instanciable :" + e.getMessage());
-		}
-	}
+	protected abstract <N extends AbstractNode<?, ?>> AbstractNode<?, ?> readAbstractNode(final long nodePosition, final Class<N> nodeType);
 
 	@SuppressWarnings("unchecked")
 	private <W> W readCache(final long positionStuff, final Class<W> typeStuff) {
@@ -264,8 +236,7 @@ public abstract class AbstractIndex<U, K, V> {
 	}
 
 	@SuppressWarnings("unchecked")
-	private synchronized <T> T readClass(final Class<T> type, final long position)
-			throws IOException, StorageException, SerializationException {
+	private synchronized <T> T readClass(final Class<T> type, final long position) throws IOException, SerializationException {
 		seek(position);
 		if (type == String.class)
 			return (T) raf.readUTF();
@@ -292,8 +263,9 @@ public abstract class AbstractIndex<U, K, V> {
 			l.add(raf.readDouble());
 			l.add(raf.readDouble());
 		}
-		if (AbstractNode.class.isAssignableFrom(type))
+		if (AbstractNode.class.isAssignableFrom(type)) {
 			return (T) readAbstractNode(position, (Class<? extends AbstractNode<?, ?>>) type);
+		}
 		return store.getMarshaller().unserialize(type, raf);
 	}
 
@@ -328,8 +300,7 @@ public abstract class AbstractIndex<U, K, V> {
 		newRandomAccessFile();
 	}
 
-	protected CacheModifications stockpile(final Collection<U> us, final long version)
-			throws StorageException, IOException, SerializationException {
+	protected CacheModifications stockpile(final Collection<U> us, final long version) throws StorageException, IOException, SerializationException {
 		final CacheModifications modifs = new CacheModifications(this, version);
 		for (final U u : us)
 			add(u, version, modifs);
@@ -364,8 +335,7 @@ public abstract class AbstractIndex<U, K, V> {
 	 * @return
 	 * @throws SerializationException
 	 */
-	protected long writeFakeAndCache(final Object value, final CacheModifications modifs)
-			throws SerializationException {
+	protected long writeFakeAndCache(final Object value, final CacheModifications modifs) throws SerializationException {
 		return modifs.addToEnd(value);
 	}
 
