@@ -1,5 +1,7 @@
 package com.chronosave.index.storage.file;
 
+import java.io.IOException;
+
 import com.chronosave.index.storage.exception.SerializationException;
 import com.chronosave.index.storage.exception.StorageException;
 
@@ -39,6 +41,11 @@ public class SingletonReverseNode<V extends Comparable<V>> extends SingletonNode
 	 */
 	public SingletonReverseNode(final long position, final AbstractIndex<?, ?, ?> index, final Class<V> valueType) {
 		super(position, index, valueType);
+	}
+
+	@Override
+	protected Node1D<V, V> newNode(final long keyPosition, final Long valuePosition, final AbstractIndex<?, ?, ?> index, final CacheModifications modifs) throws IOException, StorageException, SerializationException {
+		return new SingletonReverseNode<>(keyPosition, index, valueType, modifs);
 	}
 
 }
