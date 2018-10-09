@@ -35,18 +35,6 @@ public class SpaceIndex<U, K extends List<Double>> extends AbstractIndex<U, K, S
 			cacheNext();
 		}
 
-		private void cacheNext() {
-			if (nodeIdIterator != null && nodeIdIterator.hasNext()) {
-				next = nodeIdIterator.next();
-				hasNext = true;
-			}
-			while (!hasNext && nodeXYIterator != null && nodeXYIterator.hasNext()) {
-				nodeIdIterator = nodeXYIterator.next().iterator();
-				hasNext = nodeIdIterator.hasNext();
-				next = hasNext ? nodeIdIterator.next() : null;
-			}
-		}
-
 		@Override
 		public void close() throws IOException {
 			closed = true;
@@ -73,9 +61,25 @@ public class SpaceIndex<U, K extends List<Double>> extends AbstractIndex<U, K, S
 		public void remove() {
 			throw new UnsupportedOperationException();
 		}
+
+		private void cacheNext() {
+			if (nodeIdIterator != null && nodeIdIterator.hasNext()) {
+				next = nodeIdIterator.next();
+				hasNext = true;
+			}
+			while (!hasNext && nodeXYIterator != null && nodeXYIterator.hasNext()) {
+				nodeIdIterator = nodeXYIterator.next().iterator();
+				hasNext = nodeIdIterator.hasNext();
+				next = hasNext ? nodeIdIterator.next() : null;
+			}
+		}
 	}
 
 	private static final String EXTENTION = ".spatial";
+
+	private static Path getPath(final Path basePath, final String debutNom, final ComputeKey<?, ?> delegateKey) {
+		return Paths.get(basePath.toString(), debutNom + EXTENTION + "." + delegateKey.hashCode() + ".0");
+	}
 
 	protected static final <U> void feed(final Path basePath, final Map<ComputeKey<?, U>, AbstractIndex<U, ?, ?>> indexes, final Store<U> stockage) throws IOException, ClassNotFoundException, StorageException, SerializationException, StoreException {
 		final String debutNom = stockage.debutNomFichier();
@@ -85,10 +89,6 @@ public class SpaceIndex<U, K extends List<Double>> extends AbstractIndex<U, K, S
 			final ComputeKey<?, U> fc = idx.getDelegateKey();
 			indexes.put(fc, idx);
 		}
-	}
-
-	private static Path getPath(final Path basePath, final String debutNom, final ComputeKey<?, ?> delegateKey) {
-		return Paths.get(basePath.toString(), debutNom + EXTENTION + "." + delegateKey.hashCode() + ".0");
 	}
 
 	/**
@@ -125,34 +125,13 @@ public class SpaceIndex<U, K extends List<Double>> extends AbstractIndex<U, K, S
 		super(String.class, file, store, new GetId<>(store.getIdManager()));
 	}
 
+	public CloseableIterator<String> inTheBox(final double xmin, final double ymin, final double xmax, final double ymax, final ReadWriteLock locker) throws IOException, StorageException, SerializationException {
+		return new NodeIterator(getRoot(null), xmin, ymin, xmax, ymax, locker);
+	}
+
 	private void add(final K key, final long keyPosition, final String id, final long idPosition, final CacheModifications modifs) throws IOException, StorageException, SerializationException {
 		addKeyToValue(key, keyPosition, id, idPosition, modifs);
 		addValueToKey(keyPosition, id, idPosition, modifs);
-	}
-
-	@Override
-	protected void add(final K key, final String id, final CacheModifications modifs) throws StorageException, IOException, SerializationException {
-		if (key == null)
-			return;
-		final AbstractNode<String, K> oldReverseNode = getReverseRoot(modifs).findNode(id, modifs);
-		if (oldReverseNode != null) {
-			final K oldKey = oldReverseNode.getValue(modifs);
-			if (isEqual(oldKey, key))
-				return;// nothing to do
-			final XYNode<K> oldComplexNode = (XYNode<K>) getRoot(modifs).findNode(oldKey, modifs);// getRacine() is not
-																									// null
-			oldComplexNode.deleteId(id, modifs);
-		}
-		if (getRoot(modifs) == null)
-			initRootWithCoordinates(key, modifs);
-		add(key, writeFakeAndCache(key, modifs), id, getIdPosition(id, modifs), modifs);
-	}
-
-	@Override
-	protected void addKeyToValue(final K key, final long keyPosition, final String id, final long idPosition, final CacheModifications modifs) throws IOException, StorageException, SerializationException {
-		setRoot((XYNode<K>) getRoot(modifs).addAndBalance(key, keyPosition, NULL, modifs), modifs);
-		final XYNode<K> n = (XYNode<K>) getRoot(modifs).findNode(key, modifs);
-		n.insertValue(id, idPosition, modifs);
 	}
 
 	private void addValueToKey(final long keyPosition, final String id, final long idPosition, final CacheModifications modifs) throws IOException, StorageException, SerializationException {
@@ -164,63 +143,8 @@ public class SpaceIndex<U, K extends List<Double>> extends AbstractIndex<U, K, S
 		deleteId(id, modifs);
 	}
 
-	@Override
-	protected void delete(final String id, final CacheModifications modifs) throws IOException, StorageException, SerializationException {
-		if (id == null)
-			return;
-		final AbstractNode<String, K> reverseNode = getReverseRoot(modifs).findNode(id, modifs);
-		if (reverseNode == null)
-			return;// nothing to do
-		final K oldKey = reverseNode.getValue(modifs);
-		delete(oldKey, id, modifs);
-	}
-
 	private void deleteId(final String id, final CacheModifications modifs) throws IOException, StorageException, SerializationException {
 		setReverseRoot((SimpleNode<String, K>) getReverseRoot(modifs).deleteAndBalance(id, modifs), modifs);
-	}
-
-	@Override
-	protected void deleteKtoId(final K key, final String id, final CacheModifications modifs) throws IOException, StorageException, SerializationException {
-		final XYNode<K> nodeXY = (XYNode<K>) getRoot(modifs).findNode(key, modifs);// not null since reverseNode != null
-		nodeXY.deleteId(id, modifs);
-	}
-
-	protected long getIdPosition(final String id, final CacheModifications modifs) throws IOException, StorageException, SerializationException {
-		final AbstractNode<String, ?> reverseNode = getReverseRoot(modifs).findNode(id, modifs);
-		return reverseNode == null ? writeFakeAndCache(id, modifs) : reverseNode.valuePosition(modifs);
-	}
-
-	@Override
-	protected long getKeyPosition(final K key, final CacheModifications modifs) throws IOException, StorageException, SerializationException {
-		if (key == null)
-			return NULL;
-		AbstractNode<K, SingletonNode<String>> node = getRoot(modifs);
-		node = node == null ? null : node.findNode(key, modifs);
-		return node == null ? writeFakeAndCache(key, modifs) : node.valuePosition(modifs);
-	}
-
-	@SuppressWarnings("unchecked")
-	protected SimpleNode<String, K> getReverseRoot(final CacheModifications modifs) throws IOException, StorageException, SerializationException {
-		if (reverseRootPosition(modifs) == NULL)// Fake node
-			return new SimpleReverseNode<>(keyType, String.class, this, modifs);
-		return getStuff(reverseRootPosition(modifs), SimpleReverseNode.class, modifs);
-	}
-
-	@SuppressWarnings("unchecked")
-	protected XYNode<K> getRoot(final CacheModifications modifs) throws IOException, StorageException, SerializationException {
-		return getStuff(rootPosition, XYNode.class, modifs); // rootPosition may be null
-	}
-
-	@Override
-	protected Class<?> getValueTypeOfNode() {
-		return SingletonNode.class;
-	}
-
-	@Override
-	protected long initFile() throws IOException, StorageException, SerializationException {
-		final long positionEndOfHeaderInAbstractIndex = super.initFile();
-		setReverseRootPosition(NULL);
-		return positionEndOfHeaderInAbstractIndex;
 	}
 
 	/**
@@ -252,24 +176,15 @@ public class SpaceIndex<U, K extends List<Double>> extends AbstractIndex<U, K, S
 			hh = 2 * Math.abs(y0);
 			y = y0 < 0 ? -hh : 0;
 		}
-		setRoot(new XYNode<>(this, keyType, x, y, hw, hh, modifs), modifs);
+		setRoot(new XYNode<>(this, getKeyType(), x, y, hw, hh, modifs), modifs);
 	}
 
-	public CloseableIterator<String> inTheBox(final double xmin, final double ymin, final double xmax, final double ymax, final ReadWriteLock locker) throws IOException, StorageException, SerializationException {
-		return new NodeIterator(getRoot(null), xmin, ymin, xmax, ymax, locker);
-	}
-
-	private long reverseRootPosition(final CacheModifications modifs) throws IOException, StorageException, SerializationException {
+	private long reverseRootPosition(final CacheModifications modifs) throws IOException, SerializationException {
 		return getStuff(reverseRootPositionPosition(), Long.class, modifs);
 	}
 
 	private long reverseRootPositionPosition() {
-		return positionEndOfHeaderInAbstractIndex;
-	}
-
-	protected void setReverseRoot(final SimpleNode<String, K> node, final CacheModifications modifs) {
-		final long reverseRootPosition = node == null ? NULL : node.getPosition();
-		modifs.add(reverseRootPositionPosition(), reverseRootPosition);
+		return getPositionEndOfHeaderInAbstractIndex();
 	}
 
 	private void setReverseRootPosition(final long reverseRootPosition) throws IOException, StorageException {
@@ -277,18 +192,102 @@ public class SpaceIndex<U, K extends List<Double>> extends AbstractIndex<U, K, S
 	}
 
 	private void setRoot(final XYNode<K> noeudXY, final CacheModifications modifs) {
-		rootPosition = noeudXY == null ? NULL : noeudXY.getPosition();
-		modifs.add(ROOT_POSITION_POSITION, rootPosition);
+		setRootPosition(noeudXY == null ? NULL : noeudXY.getPosition(), modifs);
+	}
+
+	@Override
+	protected void add(final K key, final String id, final CacheModifications modifs) throws StorageException, IOException, SerializationException {
+		if (key == null)
+			return;
+		final AbstractNode<String, K> oldReverseNode = getReverseRoot(modifs).findNode(id, modifs);
+		if (oldReverseNode != null) {
+			final K oldKey = oldReverseNode.getValue(modifs);
+			if (isEqual(oldKey, key))
+				return;// nothing to do
+			final XYNode<K> oldComplexNode = (XYNode<K>) getRoot(modifs).findNode(oldKey, modifs);// getRacine() is not
+																									// null
+			oldComplexNode.deleteId(id, modifs);
+		}
+		if (getRoot(modifs) == null)
+			initRootWithCoordinates(key, modifs);
+		add(key, writeFakeAndCache(key, modifs), id, getIdPosition(id, modifs), modifs);
+	}
+
+	@Override
+	protected void addKeyToValue(final K key, final long keyPosition, final String id, final long idPosition, final CacheModifications modifs) throws IOException, StorageException, SerializationException {
+		setRoot((XYNode<K>) getRoot(modifs).addAndBalance(key, keyPosition, NULL, modifs), modifs);
+		final XYNode<K> n = (XYNode<K>) getRoot(modifs).findNode(key, modifs);
+		n.insertValue(id, idPosition, modifs);
+	}
+
+	@Override
+	protected void delete(final String id, final CacheModifications modifs) throws IOException, StorageException, SerializationException {
+		if (id == null)
+			return;
+		final AbstractNode<String, K> reverseNode = getReverseRoot(modifs).findNode(id, modifs);
+		if (reverseNode == null)
+			return;// nothing to do
+		final K oldKey = reverseNode.getValue(modifs);
+		delete(oldKey, id, modifs);
+	}
+
+	@Override
+	protected void deleteKtoId(final K key, final String id, final CacheModifications modifs) throws IOException, StorageException, SerializationException {
+		final XYNode<K> nodeXY = (XYNode<K>) getRoot(modifs).findNode(key, modifs);// not null since reverseNode != null
+		nodeXY.deleteId(id, modifs);
+	}
+
+	protected long getIdPosition(final String id, final CacheModifications modifs) throws IOException, StorageException, SerializationException {
+		final AbstractNode<String, ?> reverseNode = getReverseRoot(modifs).findNode(id, modifs);
+		return reverseNode == null ? writeFakeAndCache(id, modifs) : reverseNode.valuePosition(modifs);
+	}
+
+	@Override
+	protected long getKeyPosition(final K key, final CacheModifications modifs) throws IOException, StorageException, SerializationException {
+		if (key == null)
+			return NULL;
+		AbstractNode<K, SingletonNode<String>> node = getRoot(modifs);
+		node = node == null ? null : node.findNode(key, modifs);
+		return node == null ? writeFakeAndCache(key, modifs) : node.valuePosition(modifs);
+	}
+
+	@SuppressWarnings("unchecked")
+	protected SimpleNode<String, K> getReverseRoot(final CacheModifications modifs) throws IOException, SerializationException {
+		if (reverseRootPosition(modifs) == NULL)// Fake node
+			return new SimpleReverseNode<>(getKeyType(), String.class, this, modifs);
+		return getStuff(reverseRootPosition(modifs), SimpleReverseNode.class, modifs);
+	}
+
+	@SuppressWarnings("unchecked")
+	protected XYNode<K> getRoot(final CacheModifications modifs) throws IOException, SerializationException {
+		return getStuff(getRootPosition(), XYNode.class, modifs); // rootPosition may be null
+	}
+
+	@Override
+	protected Class<?> getValueTypeOfNode() {
+		return SingletonNode.class;
+	}
+
+	@Override
+	protected long initFile() throws IOException, StorageException, SerializationException {
+		final long positionEndOfHeaderInAbstractIndex = super.initFile();
+		setReverseRootPosition(NULL);
+		return positionEndOfHeaderInAbstractIndex;
 	}
 
 	@Override
 	protected <N extends AbstractNode<?, ?>> AbstractNode<?, ?> readAbstractNode(final long nodePosition, final Class<N> nodeType) {
 		if (ReverseNode.class.isAssignableFrom(nodeType)) {
-			return new SimpleReverseNode<>(nodePosition, this, keyType, valueType);
+			return new SimpleReverseNode<>(nodePosition, this, getKeyType(), getValueType());
 		}
 		if (nodeType.isAssignableFrom(SingletonNode.class)) {
 			return new SingletonNode<>(nodePosition, this, String.class);
 		}
-		return new XYNode<>(nodePosition, this, keyType);
+		return new XYNode<>(nodePosition, this, getKeyType());
+	}
+
+	protected void setReverseRoot(final SimpleNode<String, K> node, final CacheModifications modifs) {
+		final long reverseRootPosition = node == null ? NULL : node.getPosition();
+		modifs.add(reverseRootPositionPosition(), reverseRootPosition);
 	}
 }

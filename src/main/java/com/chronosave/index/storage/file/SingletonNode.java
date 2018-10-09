@@ -20,6 +20,21 @@ public class SingletonNode<K extends Comparable<K>> extends SimpleNode<K, K> {
 	}
 
 	/**
+	 * file
+	 * 
+	 * @param position
+	 * @param indexAbstrait
+	 * @param keyType
+	 * @param valueType
+	 * @throws IOException
+	 * @throws StorageException
+	 * @throws SerializationException
+	 */
+	public SingletonNode(final long position, final AbstractIndex<?, ?, ?> index, final Class<K> keyType) {
+		super(position, index, keyType, keyType);
+	}
+
+	/**
 	 * runtime
 	 * 
 	 * @param keyPosition
@@ -35,23 +50,8 @@ public class SingletonNode<K extends Comparable<K>> extends SimpleNode<K, K> {
 		super(keyPosition, null, index, keyType, keyType, modifs);
 	}
 
-	/**
-	 * file
-	 * 
-	 * @param position
-	 * @param indexAbstrait
-	 * @param keyType
-	 * @param valueType
-	 * @throws IOException
-	 * @throws StorageException
-	 * @throws SerializationException
-	 */
-	public SingletonNode(final long position, final AbstractIndex<?, ?, ?> index, final Class<K> keyType) {
-		super(position, index, keyType, keyType);
-	}
-
 	@Override
-	protected K getValue(final CacheModifications modifs) throws IOException, StorageException, SerializationException {
+	protected K getValue(final CacheModifications modifs) throws IOException, SerializationException {
 		return getKey(modifs);
 	}
 

@@ -31,6 +31,43 @@ public class CacheModifications {
 		endOfFile = index.getEndOfFile();
 	}
 
+	public long getEndOfFile() {
+		return endOfFile;
+	}
+
+	private void updateEndOfFile(final Object value) throws SerializationException {
+		if (value instanceof Date)
+			endOfFile += Long.BYTES;
+		else if (value instanceof String)
+			endOfFile += ((String) value).getBytes().length + Short.BYTES;
+		else if (value instanceof Boolean)
+			endOfFile += AbstractIndex.BOOLEAN_BYTES;
+		else if (value instanceof Byte)
+			endOfFile += Byte.BYTES;
+		else if (value instanceof Long)
+			endOfFile += Long.BYTES;
+		else if (value instanceof Integer)
+			endOfFile += Integer.BYTES;
+		else if (value instanceof Short)
+			endOfFile += Short.BYTES;
+		else if (value instanceof Double)
+			endOfFile += Double.BYTES;
+		else if (value instanceof Float)
+			endOfFile += Float.BYTES;
+		else if (value instanceof Character)
+			endOfFile += Character.BYTES;
+		else if (value instanceof List<?>) // actually List<Double> for lonlat
+			endOfFile += 2 * Double.BYTES;
+		else
+			endOfFile += index.getStore().getMarshaller().serialize(value, new DataOutputStream(new ByteArrayOutputStream()));
+
+	}
+
+	private void updateGlobalCache() {
+		for (final Map.Entry<Pair<Long, Class<?>>, Object> entry : positionsAndTypeToLocalCache.entrySet())
+			index.addCache(entry.getKey().getKey(), entry.getValue());
+	}
+
 	protected void add(final long position, final Object valueToWrite) {
 		positionsAndNewValuesToWrite.put(position, valueToWrite);
 		addCache(position, valueToWrite);
@@ -47,47 +84,9 @@ public class CacheModifications {
 		return oldEndOfFile;
 	}
 
-	public long getEndOfFile() {
-		return endOfFile;
-	}
-
 	@SuppressWarnings("unchecked")
 	protected <U> U getObjectFromRecentModifs(final long position, final Class<U> type) {
 		return (U) positionsAndTypeToLocalCache.get(position, type);
-	}
-
-	private void updateEndOfFile(final Object value) throws SerializationException {
-		if (value instanceof Date)
-			endOfFile += Long.SIZE / 8;
-		else if (value instanceof String)
-			endOfFile += ((String) value).getBytes().length + Short.SIZE / 8;
-		else if (value instanceof Boolean)
-			endOfFile += AbstractIndex.BOOLEAN_BYTES;
-		else if (value instanceof Byte)
-			endOfFile += Byte.SIZE / 8;
-		else if (value instanceof Long)
-			endOfFile += Long.SIZE / 8;
-		else if (value instanceof Integer)
-			endOfFile += Integer.SIZE / 8;
-		else if (value instanceof Short)
-			endOfFile += Short.SIZE / 8;
-		else if (value instanceof Double)
-			endOfFile += Double.SIZE / 8;
-		else if (value instanceof Float)
-			endOfFile += Float.SIZE / 8;
-		else if (value instanceof Character)
-			endOfFile += Character.SIZE / 8;
-		else if (value instanceof List<?>) // actually List<Double> for lonlat
-			endOfFile += 2 * Double.SIZE / 8;
-		else
-			endOfFile += index.store.getMarshaller().serialize(value,
-					new DataOutputStream(new ByteArrayOutputStream()));
-
-	}
-
-	private void updateGlobalCache() {
-		for (final Map.Entry<Pair<Long, Class<?>>, Object> entry : positionsAndTypeToLocalCache.entrySet())
-			index.addCache(entry.getKey().getKey(), entry.getValue());
 	}
 
 	protected void write() throws IOException, StorageException {

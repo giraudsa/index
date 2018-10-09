@@ -65,6 +65,8 @@ public abstract class Index1D<U, K, V extends Comparable<V>, N> extends Abstract
 		super(valueType, file, store, delegateValue);
 	}
 
+	public abstract CloseableIterator<V> getBetween(K min, K max, ReadWriteLock locker) throws IOException, StorageException, SerializationException, InterruptedException;
+
 	protected void add(final K key, final long keyPosition, final V value, final long valuePosition, final CacheModifications modifs) throws StorageException, IOException, SerializationException {
 		addKeyToValue(key, keyPosition, value, valuePosition, modifs);
 	}
@@ -81,6 +83,8 @@ public abstract class Index1D<U, K, V extends Comparable<V>, N> extends Abstract
 		setRoot(getRoot(modifs).addAndBalance(key, keyPosition, idPosition, modifs), modifs);
 	}
 
+	protected abstract AbstractNode<K, N> createFakeNode(CacheModifications modifs);
+
 	@Override
 	protected long getKeyPosition(final K key, final CacheModifications modifs) throws IOException, StorageException, SerializationException {
 		if (key == null)
@@ -91,18 +95,13 @@ public abstract class Index1D<U, K, V extends Comparable<V>, N> extends Abstract
 
 	protected abstract Class<? extends AbstractNode<K, N>> getNodeType();
 
-	protected abstract AbstractNode<K, N> createFakeNode(CacheModifications modifs);
-
-	protected AbstractNode<K, N> getRoot(final CacheModifications modifs) throws IOException, StorageException, SerializationException {
-		if (rootPosition == NULL) // Fake node
+	protected AbstractNode<K, N> getRoot(final CacheModifications modifs) throws IOException, SerializationException {
+		if (getRootPosition() == NULL) // Fake node
 			return createFakeNode(modifs);
-		return getStuff(rootPosition, getNodeType(), modifs);
+		return getStuff(getRootPosition(), getNodeType(), modifs);
 	}
 
 	protected void setRoot(final AbstractNode<K, ?> abstractNode, final CacheModifications modifs) {
-		rootPosition = abstractNode == null ? NULL : abstractNode.getPosition();
-		modifs.add(ROOT_POSITION_POSITION, rootPosition);
+		setRootPosition(abstractNode == null ? NULL : abstractNode.getPosition(), modifs);
 	}
-
-	public abstract CloseableIterator<V> getBetween(K min, K max, ReadWriteLock locker) throws IOException, StorageException, SerializationException, InterruptedException;
 }

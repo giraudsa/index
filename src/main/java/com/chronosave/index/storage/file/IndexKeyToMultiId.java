@@ -70,6 +70,11 @@ public class IndexKeyToMultiId<U, K extends Comparable<K>> extends IndexMultiId<
 	}
 
 	@Override
+	protected AbstractNode<String, K> createFakeReverseNode(final CacheModifications modifs) {
+		return new SimpleReverseNode<>(getKeyType(), getValueType(), this, modifs);
+	}
+
+	@Override
 	protected void delete(final String id, final CacheModifications modifs) throws IOException, StorageException, SerializationException {
 		final AbstractNode<String, K> reverseNode = getReverseRoot(modifs).findNode(id, modifs);
 		if (reverseNode == null)
@@ -85,16 +90,11 @@ public class IndexKeyToMultiId<U, K extends Comparable<K>> extends IndexMultiId<
 	}
 
 	@Override
-	protected AbstractNode<String, K> createFakeReverseNode(final CacheModifications modifs) {
-		return new SimpleReverseNode<>(keyType, valueType, this, modifs);
-	}
-
-	@Override
 	protected <N extends AbstractNode<?, ?>> AbstractNode<?, ?> readAbstractNode(final long nodePosition, final Class<N> nodeType) {
 		if (ReverseNode.class.isAssignableFrom(nodeType))
-			return new SimpleReverseNode<>(nodePosition, this, keyType, valueType);
+			return new SimpleReverseNode<>(nodePosition, this, getKeyType(), getValueType());
 		if (SingletonNode.class.isAssignableFrom(nodeType))
-			return new SingletonNode<>(nodePosition, this, keyType);
-		return new ComplexNormalNode<>(nodePosition, this, keyType);
+			return new SingletonNode<>(nodePosition, this, getKeyType());
+		return new ComplexNormalNode<>(nodePosition, this, getKeyType());
 	}
 }

@@ -35,27 +35,30 @@ public abstract class AbstractIndex<U, K, V> {
 	public static final long BOOLEAN_BYTES = 1;
 
 	private static final TriKeyCache<AbstractIndex<?, ?, ?>, Long, Class<?>, Object> cache = new TriKeyCache<>(100000);
+	private static final long IS_PRIMARY_POSITION;
+	private static final long KEY_TYPE_POSITION;
+	private static final long ROOT_POSITION_POSITION;
 	protected static final long NULL = -1L;
-	protected static final long ROOT_POSITION_POSITION = 0L;
-	private static final long IS_PRIMARY_POSITION = ROOT_POSITION_POSITION + Long.SIZE / 8;
-	private static final long KEY_TYPE_POSITION = IS_PRIMARY_POSITION + BOOLEAN_BYTES;
+
+	static {
+		ROOT_POSITION_POSITION = 0L;
+		IS_PRIMARY_POSITION = ROOT_POSITION_POSITION + Long.BYTES;
+		KEY_TYPE_POSITION = IS_PRIMARY_POSITION + BOOLEAN_BYTES;
+	}
 
 	private final ComputeKey<K, U> delegateKey;
-
 	private final ComputeValue<V, U> delegateValue;
-
 	private long endOfFile;
-
-	protected Path file;
+	private Path file;
 	private final boolean isPrimary;
-	protected final Class<K> keyType;
+	private final Class<K> keyType;
 	private final long positionComputeKey;
-	protected final long positionEndOfHeaderInAbstractIndex;
-	protected RandomAccessFile raf;
-	protected long rootPosition;
-	protected final Store<U> store;
-	protected final Class<V> valueType;
-	protected long version;
+	private final long positionEndOfHeaderInAbstractIndex;
+	private RandomAccessFile raf;
+	private long rootPosition;
+	private final Store<U> store;
+	private final Class<V> valueType;
+	private long version;
 
 	/**
 	 * runtime creation
@@ -72,6 +75,7 @@ public abstract class AbstractIndex<U, K, V> {
 	 */
 	protected AbstractIndex(final Class<K> keyType, final Class<V> valueType, final Path fileStockage, final Store<U> store, final ComputeKey<K, U> delegateKey, final ComputeValue<V, U> delegateValeur) throws IOException, StorageException, SerializationException {
 		this.file = fileStockage;
+		Files.deleteIfExists(fileStockage);
 		Files.createFile(file);
 		newRandomAccessFile();
 		this.keyType = keyType;
@@ -80,7 +84,7 @@ public abstract class AbstractIndex<U, K, V> {
 		this.delegateKey = delegateKey;
 		this.store = store;
 		this.isPrimary = this instanceof PrimaryIndexFile;
-		positionComputeKey = KEY_TYPE_POSITION + Short.SIZE / 8 + keyType.getName().length();
+		positionComputeKey = KEY_TYPE_POSITION + Short.BYTES + keyType.getName().length();
 		this.positionEndOfHeaderInAbstractIndex = initFile();
 	}
 
@@ -101,17 +105,17 @@ public abstract class AbstractIndex<U, K, V> {
 		this.file = file;
 		newRandomAccessFile();
 		this.endOfFile = raf.length();
-		if (raf.length() < KEY_TYPE_POSITION + Short.SIZE / 8)
+		if (raf.length() < KEY_TYPE_POSITION + Short.BYTES)
 			throw new IndexInstanciationException("the file " + raf.toString() + " is corrupted");
 		this.valueType = valueType;
 		this.delegateValue = delegateValue;
 
 		this.store = store;
-		this.version = IndexedStorageManager.readVersion(file);
+		version = IndexedStorageManager.readVersion(file);
 		this.rootPosition = getStuff(ROOT_POSITION_POSITION, Long.class, null);
 		isPrimary = getStuff(IS_PRIMARY_POSITION, Boolean.class, null);
 		this.keyType = (Class<K>) Class.forName(getStuff(KEY_TYPE_POSITION, String.class, null));
-		positionComputeKey = KEY_TYPE_POSITION + Short.SIZE / 8 + keyType.getName().length();
+		positionComputeKey = KEY_TYPE_POSITION + Short.BYTES + keyType.getName().length();
 		if (isPrimary) {
 			this.delegateKey = (ComputeKey<K, U>) new GetId<>(store.getIdManager());
 			positionEndOfHeaderInAbstractIndex = positionComputeKey;
@@ -120,6 +124,75 @@ public abstract class AbstractIndex<U, K, V> {
 			this.delegateKey = ComputeKey.unmarshall(store.getMarshaller(), raf);
 			positionEndOfHeaderInAbstractIndex = raf.getFilePointer();
 		}
+	}
+
+	private void newRandomAccessFile() throws IOException, StorageException {
+		if (!file.toFile().exists())
+			throw new StorageException("the file doesn't exist, permission pb ? : " + file.toString());
+		raf = new RandomAccessFile(file.toFile(), "rw");
+		endOfFile = raf.length();
+	}
+
+	@SuppressWarnings("unchecked")
+	private <W> W readCache(final long positionStuff, final Class<W> typeStuff) {
+		synchronized (cache) {
+			return (W) cache.get(this, positionStuff, typeStuff);
+		}
+	}
+
+	@SuppressWarnings("unchecked")
+	private synchronized <T> T readClass(final Class<T> type, final long position) throws IOException, SerializationException {
+		seek(position);
+		if (type == String.class)
+			return (T) raf.readUTF();
+		if (type == boolean.class || type == Boolean.class)
+			return (T) (Object) raf.readBoolean();
+		if (type == byte.class || type == Byte.class)
+			return (T) (Object) raf.readByte();
+		if (type == long.class || type == Long.class)
+			return (T) (Object) raf.readLong();
+		if (type == int.class || type == Integer.class)
+			return (T) (Object) raf.readInt();
+		if (type == short.class || type == Short.class)
+			return (T) (Object) raf.readShort();
+		if (type == double.class || type == Double.class)
+			return (T) (Object) raf.readDouble();
+		if (type == float.class || type == Float.class)
+			return (T) (Object) raf.readFloat();
+		if (type == char.class || type == Character.class)
+			return (T) (Object) raf.readChar();
+		if (type == Date.class)
+			return (T) new Date(raf.readLong());
+		if (List.class.isAssignableFrom(type)) {// List<Double> for lonlat
+			final List<Double> l = new ArrayList<>();
+			l.add(raf.readDouble());
+			l.add(raf.readDouble());
+		}
+		if (AbstractNode.class.isAssignableFrom(type)) {
+			return (T) readAbstractNode(position, (Class<? extends AbstractNode<?, ?>>) type);
+		}
+		return store.getMarshaller().unserialize(type, raf);
+	}
+
+	private void setRootPosition(final long positionRacine) throws IOException, StorageException {
+		this.rootPosition = positionRacine;
+		write(ROOT_POSITION_POSITION, positionRacine);
+	}
+
+	private void writeNumber(final Number value) throws IOException {
+		// Byte, Double, Float, Integer, Long, and Short.
+		if (value instanceof Byte)
+			raf.writeByte(value.byteValue());
+		else if (value instanceof Double)
+			raf.writeDouble(value.doubleValue());
+		else if (value instanceof Float)
+			raf.writeFloat(value.floatValue());
+		else if (value instanceof Integer)
+			raf.writeInt(value.intValue());
+		else if (value instanceof Long)
+			raf.writeLong(value.longValue());
+		else if (value instanceof Short)
+			raf.writeShort(value.shortValue());
 	}
 
 	protected abstract void add(K key, V value, CacheModifications modifs) throws StorageException, IOException, SerializationException;
@@ -183,6 +256,22 @@ public abstract class AbstractIndex<U, K, V> {
 
 	protected abstract long getKeyPosition(K key, CacheModifications modifs) throws IOException, StorageException, SerializationException;
 
+	protected Class<K> getKeyType() {
+		return keyType;
+	}
+
+	protected long getPositionEndOfHeaderInAbstractIndex() {
+		return positionEndOfHeaderInAbstractIndex;
+	}
+
+	protected long getRootPosition() {
+		return rootPosition;
+	}
+
+	protected Store<U> getStore() {
+		return store;
+	}
+
 	protected <W> W getStuff(final long stuffPosition, final Class<W> stuffType, final CacheModifications modifs) throws IOException, SerializationException {
 		if (stuffPosition < 0)
 			return null;
@@ -198,8 +287,16 @@ public abstract class AbstractIndex<U, K, V> {
 		return stuff;
 	}
 
+	protected Class<V> getValueType() {
+		return valueType;
+	}
+
 	protected Class<?> getValueTypeOfNode() {
 		return valueType;
+	}
+
+	protected long getVersion() {
+		return version;
 	}
 
 	protected long initFile() throws IOException, StorageException, SerializationException {
@@ -219,55 +316,7 @@ public abstract class AbstractIndex<U, K, V> {
 
 	}
 
-	private void newRandomAccessFile() throws IOException, StorageException {
-		if (!file.toFile().exists())
-			throw new StorageException("the file doesn't exist, permission pb ? : " + file.toString());
-		raf = new RandomAccessFile(file.toFile(), "rw");
-		endOfFile = raf.length();
-	}
-
 	protected abstract <N extends AbstractNode<?, ?>> AbstractNode<?, ?> readAbstractNode(final long nodePosition, final Class<N> nodeType);
-
-	@SuppressWarnings("unchecked")
-	private <W> W readCache(final long positionStuff, final Class<W> typeStuff) {
-		synchronized (cache) {
-			return (W) cache.get(this, positionStuff, typeStuff);
-		}
-	}
-
-	@SuppressWarnings("unchecked")
-	private synchronized <T> T readClass(final Class<T> type, final long position) throws IOException, SerializationException {
-		seek(position);
-		if (type == String.class)
-			return (T) raf.readUTF();
-		if (type == boolean.class || type == Boolean.class)
-			return (T) (Object) raf.readBoolean();
-		if (type == byte.class || type == Byte.class)
-			return (T) (Object) raf.readByte();
-		if (type == long.class || type == Long.class)
-			return (T) (Object) raf.readLong();
-		if (type == int.class || type == Integer.class)
-			return (T) (Object) raf.readInt();
-		if (type == short.class || type == Short.class)
-			return (T) (Object) raf.readShort();
-		if (type == double.class || type == Double.class)
-			return (T) (Object) raf.readDouble();
-		if (type == float.class || type == Float.class)
-			return (T) (Object) raf.readFloat();
-		if (type == char.class || type == Character.class)
-			return (T) (Object) raf.readChar();
-		if (type == Date.class)
-			return (T) new Date(raf.readLong());
-		if (List.class.isAssignableFrom(type)) {// List<Double> for lonlat
-			final List<Double> l = new ArrayList<>();
-			l.add(raf.readDouble());
-			l.add(raf.readDouble());
-		}
-		if (AbstractNode.class.isAssignableFrom(type)) {
-			return (T) readAbstractNode(position, (Class<? extends AbstractNode<?, ?>>) type);
-		}
-		return store.getMarshaller().unserialize(type, raf);
-	}
 
 	protected void rebuild(final long version) throws IOException, SerializationException, StorageException {
 		if (version == this.version)
@@ -282,16 +331,22 @@ public abstract class AbstractIndex<U, K, V> {
 		setVersion(version);
 	}
 
+	protected void removeFile() throws IOException {
+		raf.close();
+		Files.deleteIfExists(file);
+		raf = null;
+	}
+
 	protected void seek(final long position) throws IOException {
 		raf.seek(position);
 	}
 
-	private void setRootPosition(final long positionRacine) throws IOException, StorageException {
-		this.rootPosition = positionRacine;
-		write(ROOT_POSITION_POSITION, positionRacine);
+	protected void setRootPosition(final long rootPosition, final CacheModifications modifs) {
+		this.rootPosition = rootPosition;
+		modifs.add(ROOT_POSITION_POSITION, getRootPosition());
 	}
 
-	protected synchronized void setVersion(final long ver) throws IOException, StorageException {
+	protected void setVersion(final long ver) throws IOException, StorageException {
 		if (store.getVersion() < ver)
 			store.setVersion(ver);
 		this.version = ver;
@@ -322,8 +377,9 @@ public abstract class AbstractIndex<U, K, V> {
 		else if (value instanceof List) { // List<Double> for lonlat
 			raf.writeDouble((Double) ((List<?>) value).get(0));
 			raf.writeDouble((Double) ((List<?>) value).get(0));
-		} else
+		} else {
 			throw new StorageException("type not implemented " + value.getClass().getName());
+		}
 		endOfFile = raf.length();
 	}
 
@@ -337,22 +393,6 @@ public abstract class AbstractIndex<U, K, V> {
 	 */
 	protected long writeFakeAndCache(final Object value, final CacheModifications modifs) throws SerializationException {
 		return modifs.addToEnd(value);
-	}
-
-	private void writeNumber(final Number value) throws IOException {
-		// Byte, Double, Float, Integer, Long, and Short.
-		if (value instanceof Byte)
-			raf.writeByte(value.byteValue());
-		else if (value instanceof Double)
-			raf.writeDouble(value.doubleValue());
-		else if (value instanceof Float)
-			raf.writeFloat(value.floatValue());
-		else if (value instanceof Integer)
-			raf.writeInt(value.intValue());
-		else if (value instanceof Long)
-			raf.writeLong(value.longValue());
-		else if (value instanceof Short)
-			raf.writeShort(value.shortValue());
 	}
 
 }

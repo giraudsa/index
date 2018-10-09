@@ -2,7 +2,6 @@ package com.chronosave.index.storage.file;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.UUID;
 
@@ -14,7 +13,7 @@ import com.chronosave.index.utils.ReadWriteLock;
 
 public class PersistentIdSet<U> extends Index1D<U, String, String, String> implements Closeable {
 
-	protected PersistentIdSet(final Class<U> type, final Store<U> store) throws IOException, StorageException, SerializationException {
+	protected PersistentIdSet(final Store<U> store) throws IOException, StorageException, SerializationException {
 		super(String.class, String.class, Paths.get(UUID.randomUUID().toString()), store, new GetId<U>(store.getIdManager()), new GetId<U>(store.getIdManager()));
 	}
 
@@ -26,18 +25,27 @@ public class PersistentIdSet<U> extends Index1D<U, String, String, String> imple
 	}
 
 	@Override
-	protected void addKeyToValue(final String key, final long keyPosition, final String value, final long valuePosition, final CacheModifications modifs) throws IOException, StorageException, SerializationException {
-		// nothing to do
-	}
-
-	@Override
 	public void close() throws IOException {
-		raf.close();
 		removeFile();
 	}
 
 	public boolean contains(final String id) throws IOException, StorageException, SerializationException {
 		return getRoot(null).findNode(id, null) != null;
+	}
+
+	@Override
+	public CloseableIterator<String> getBetween(final String min, final String max, final ReadWriteLock locker) throws IOException, StorageException, SerializationException, InterruptedException {
+		throw new InterruptedException("internal use only");
+	}
+
+	@Override
+	protected void addKeyToValue(final String key, final long keyPosition, final String value, final long valuePosition, final CacheModifications modifs) throws IOException, StorageException, SerializationException {
+		// nothing to do
+	}
+
+	@Override
+	protected AbstractNode<String, String> createFakeNode(final CacheModifications modifs) {
+		return new SingletonNode<>(getKeyType(), this, modifs);
 	}
 
 	// NOTHING TO DO
@@ -58,22 +66,7 @@ public class PersistentIdSet<U> extends Index1D<U, String, String, String> imple
 	}
 
 	@Override
-	protected AbstractNode<String, String> createFakeNode(final CacheModifications modifs) {
-		return new SingletonNode<>(keyType, this, modifs);
-	}
-
-	private void removeFile() throws IOException {
-		Files.deleteIfExists(file);
-		raf = null;
-	}
-
-	@Override
-	public CloseableIterator<String> getBetween(final String min, final String max, final ReadWriteLock locker) throws IOException, StorageException, SerializationException, InterruptedException {
-		throw new InterruptedException("internal use only");
-	}
-
-	@Override
 	protected <N extends AbstractNode<?, ?>> AbstractNode<?, ?> readAbstractNode(final long nodePosition, final Class<N> nodeType) {
-		return new SingletonNode<>(nodePosition, this, keyType);
+		return new SingletonNode<>(nodePosition, this, getKeyType());
 	}
 }

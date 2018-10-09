@@ -24,13 +24,13 @@ import com.chronosave.index.storage.exception.StoreException;
  */
 public abstract class IndexBiDirectionalId<U, K, N, R> extends Index1D<U, K, String, N> {
 
-	protected long reverseRootPosition;
 	private final long reverseRootPositionposition;
+	protected long reverseRootPosition;
 
 	// runtime
 	protected IndexBiDirectionalId(final Path basePath, final Class<K> keyType, final Store<U> store, final String extention, final ComputeKey<K, U> delegateKey) throws IOException, StorageException, SerializationException {
 		super(keyType, String.class, getPath(basePath, store.debutNomFichier(), extention, delegateKey), store, delegateKey, new GetId<>(store.getIdManager()));
-		reverseRootPositionposition = positionEndOfHeaderInAbstractIndex;
+		reverseRootPositionposition = getPositionEndOfHeaderInAbstractIndex();
 		setReverseRootPosition(NULL);
 		rebuild(store.getVersion());
 	}
@@ -38,8 +38,13 @@ public abstract class IndexBiDirectionalId<U, K, N, R> extends Index1D<U, K, Str
 	// file
 	protected IndexBiDirectionalId(final Path file, final Store<U> store) throws IOException, StorageException, ClassNotFoundException, SerializationException, StoreException {
 		super(String.class, file, store, new GetId<>(store.getIdManager()));
-		reverseRootPositionposition = positionEndOfHeaderInAbstractIndex;
+		reverseRootPositionposition = getPositionEndOfHeaderInAbstractIndex();
 		reverseRootPosition = getStuff(reverseRootPositionposition, Long.class, null);
+	}
+
+	private void setReverseRootPosition(final long positionRacineInverse) throws IOException, StorageException {
+		this.reverseRootPosition = positionRacineInverse;
+		write(reverseRootPositionposition, positionRacineInverse);
 	}
 
 	@Override
@@ -51,6 +56,8 @@ public abstract class IndexBiDirectionalId<U, K, N, R> extends Index1D<U, K, Str
 	protected void addValueToKey(final String id, final long idPosition, final K key, final long keyPosition, final CacheModifications modifs) throws IOException, StorageException, SerializationException {
 		setReverseRoot(getReverseRoot(modifs).addAndBalance(id, idPosition, keyPosition, modifs), modifs);
 	}
+
+	protected abstract AbstractNode<String, R> createFakeReverseNode(CacheModifications modifs);
 
 	protected void delete(final K key, final String id, final CacheModifications modifs) throws IOException, StorageException, SerializationException {
 		deleteKtoId(key, id, modifs);
@@ -68,9 +75,7 @@ public abstract class IndexBiDirectionalId<U, K, N, R> extends Index1D<U, K, Str
 
 	protected abstract Class<? extends AbstractNode<String, R>> getReverseNodeType();
 
-	protected abstract AbstractNode<String, R> createFakeReverseNode(CacheModifications modifs);
-
-	protected AbstractNode<String, R> getReverseRoot(final CacheModifications modifs) throws IOException, StorageException, SerializationException {
+	protected AbstractNode<String, R> getReverseRoot(final CacheModifications modifs) throws IOException, SerializationException {
 		if (reverseRootPosition == NULL) // Fake node
 			return createFakeReverseNode(modifs);
 
@@ -87,10 +92,5 @@ public abstract class IndexBiDirectionalId<U, K, N, R> extends Index1D<U, K, Str
 	protected void setReverseRoot(final AbstractNode<String, R> node, final CacheModifications modifs) {
 		reverseRootPosition = node == null ? NULL : node.getPosition();
 		modifs.add(reverseRootPositionposition, reverseRootPosition);
-	}
-
-	private void setReverseRootPosition(final long positionRacineInverse) throws IOException, StorageException {
-		this.reverseRootPosition = positionRacineInverse;
-		write(reverseRootPositionposition, positionRacineInverse);
 	}
 }

@@ -72,6 +72,10 @@ public class IndexMultiKeyToMultiId<U, K extends Comparable<K>> extends IndexMul
 				add(newKey, getKeyPosition(newKey, modifs), id, idPosition, modifs);
 	}
 
+	private Collection<K> getKeys(final U objectToAdd) throws StorageException {
+		return getDelegateKey().getKeys(objectToAdd);
+	}
+
 	@Override
 	protected void add(final U objet, final long version, final CacheModifications modifs) throws StorageException, IOException, SerializationException {
 		add(new HashSet<>(getKeys(objet)), computeValue(objet, version), modifs);
@@ -82,6 +86,11 @@ public class IndexMultiKeyToMultiId<U, K extends Comparable<K>> extends IndexMul
 		setReverseRoot(getReverseRoot(modifs).addAndBalance(id, idPosition, keyPosition, modifs), modifs);
 		final ComplexReverseNode<K, String> reverse = (ComplexReverseNode<K, String>) getReverseRoot(modifs).findNode(id, modifs);
 		reverse.storeValue(key, keyPosition, modifs);
+	}
+
+	@Override
+	protected AbstractNode<String, SingletonReverseNode<K>> createFakeReverseNode(final CacheModifications modifs) {
+		return new ComplexReverseNode<>(getValueType(), this, modifs);
 	}
 
 	@Override
@@ -100,10 +109,6 @@ public class IndexMultiKeyToMultiId<U, K extends Comparable<K>> extends IndexMul
 			setReverseRoot(getReverseRoot(modifs).deleteAndBalance(id, modifs), modifs);
 	}
 
-	private Collection<K> getKeys(final U objectToAdd) throws StorageException {
-		return getDelegateKey().getKeys(objectToAdd);
-	}
-
 	@SuppressWarnings("unchecked")
 	@Override
 	protected Class<? extends AbstractNode<String, SingletonReverseNode<K>>> getReverseNodeType() {
@@ -111,18 +116,13 @@ public class IndexMultiKeyToMultiId<U, K extends Comparable<K>> extends IndexMul
 	}
 
 	@Override
-	protected AbstractNode<String, SingletonReverseNode<K>> createFakeReverseNode(final CacheModifications modifs) {
-		return new ComplexReverseNode<>(valueType, this, modifs);
-	}
-
-	@Override
 	protected <N extends AbstractNode<?, ?>> AbstractNode<?, ?> readAbstractNode(final long nodePosition, final Class<N> nodeType) {
 		if (ComplexReverseNode.class.isAssignableFrom(nodeType))
-			return new ComplexReverseNode<>(nodePosition, this, valueType);
+			return new ComplexReverseNode<>(nodePosition, this, getValueType());
 		if (SingletonReverseNode.class.isAssignableFrom(nodeType))
-			return new SingletonReverseNode<>(nodePosition, this, valueType);
+			return new SingletonReverseNode<>(nodePosition, this, getValueType());
 		if (SingletonNode.class.isAssignableFrom(nodeType))
-			return new SingletonNode<>(nodePosition, this, keyType);
-		return new ComplexNormalNode<>(nodePosition, this, keyType);
+			return new SingletonNode<>(nodePosition, this, getKeyType());
+		return new ComplexNormalNode<>(nodePosition, this, getKeyType());
 	}
 }
